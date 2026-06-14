@@ -1,0 +1,2900 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prathmesh Thakare — Research Engineer · Windows Security</title>
+  <meta name="description"
+    content="Prathmesh Thakare — Trainee Research Engineer at NPAV. Windows internals, EDR, kernel telemetry, and security tooling." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+
+  <style>
+    /* tokens */
+    :root {
+      --bg-0: #07090F;
+      --bg-1: #0B0F1A;
+      --bg-2: #111827;
+      --panel: #0F1421;
+      --border: #1B2333;
+      --border-strong: #2A3447;
+      --text-0: #E8EAF0;
+      --text-1: #B4BAC8;
+      --text-2: #6B7588;
+      --text-3: #424B5E;
+      --accent: #F5A524;
+      --accent-2: #FFB840;
+      --accent-soft: #5E4514;
+      --status: #4ADE80;
+      --warn: #F87171;
+      --link: #93B7FF;
+      --r-sm: 4px;
+      --r-md: 8px;
+      --r-lg: 14px;
+      --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+      --font-body: "Inter", system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+      --maxw: 1200px;
+      --glow: 0 0 24px rgba(245, 165, 36, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg-0);
+      color: var(--text-0);
+      font-family: var(--font-body);
+      font-size: 15.5px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      overflow-x: hidden;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font-family: inherit;
+    }
+
+    ::selection {
+      background: var(--accent);
+      color: #000;
+    }
+
+    /* ambient grid */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 64px 64px;
+      opacity: 0.18;
+      mask-image: radial-gradient(ellipse at 50% 25%, rgba(0, 0, 0, 0.9), transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse at 50% 25%, rgba(0, 0, 0, 0.9), transparent 75%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ambient amber glow */
+    body::after {
+      content: "";
+      position: fixed;
+      top: -180px;
+      right: -180px;
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, rgba(245, 165, 36, 0.10), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* status bar - desktop only */
+    .status-bar {
+      position: relative;
+      z-index: 20;
+      background: var(--bg-0);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-2);
+    }
+
+    .status-bar-inner {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 8px 24px;
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .status-bar .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--status);
+      box-shadow: 0 0 8px var(--status);
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.45;
+      }
+    }
+
+    .status-bar .sep {
+      color: var(--text-3);
+    }
+
+    .status-bar .label {
+      color: var(--text-3);
+    }
+
+    .status-bar .val {
+      color: var(--text-1);
+    }
+
+    .status-bar .right {
+      margin-left: auto;
+    }
+
+    /* nav */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 15;
+      background: rgba(7, 9, 15, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .brand {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-0);
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-prompt {
+      color: var(--accent);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      margin-left: auto;
+      list-style: none;
+      padding: 0;
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    .nav-links a {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-2);
+      transition: color 0.15s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-0);
+    }
+
+    .nav-toggle {
+      display: none;
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-sm);
+      color: var(--text-1);
+      padding: 6px 10px;
+      margin-left: auto;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+
+    /* shared section */
+    section {
+      position: relative;
+      z-index: 1;
+    }
+
+    .section {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 88px 24px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 40px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-num {
+      font-family: var(--font-mono);
+      color: var(--accent);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      margin: 0;
+      color: var(--text-0);
+    }
+
+    .section-tag {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-3);
+      margin-left: auto;
+    }
+
+    /* hero */
+    .hero {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 72px 24px 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 58vh;
+      position: relative;
+    }
+
+    .hero-inner {
+      width: 100%;
+      max-width: 720px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-meta {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-2);
+      margin-bottom: 28px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .hero-meta .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      background: rgba(74, 222, 128, 0.08);
+      border: 1px solid rgba(74, 222, 128, 0.25);
+      color: var(--status);
+      border-radius: 999px;
+      font-size: 11px;
+    }
+
+    .hero-meta .live-pill .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--status);
+      box-shadow: 0 0 6px var(--status);
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(36px, 5vw, 56px);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin: 0 0 18px;
+      color: var(--text-0);
+    }
+
+    .hero h1 .accent {
+      color: var(--accent);
+    }
+
+    .hero-sub {
+      font-family: var(--font-body);
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--text-1);
+      max-width: 620px;
+      line-height: 1.65;
+      margin: 0 auto 32px;
+      text-align: center;
+    }
+
+    .hero-sub strong {
+      color: var(--text-0);
+      font-weight: 500;
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: var(--r-md);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 500;
+      border: 1px solid var(--border-strong);
+      background: var(--panel);
+      color: var(--text-0);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0A0A0A;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-2);
+      border-color: var(--accent-2);
+      color: #0A0A0A;
+      box-shadow: var(--glow);
+    }
+
+    .btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* hero photo - desktop only */
+    .hero-photo {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      margin-left: auto;
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      border: 1px solid var(--border-strong);
+      background: var(--panel);
+    }
+
+    .hero-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .hero-photo .corner {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-0);
+      background: rgba(7, 9, 15, 0.7);
+      backdrop-filter: blur(8px);
+      padding: 4px 8px;
+      border-radius: var(--r-sm);
+      border: 1px solid var(--border-strong);
+      letter-spacing: 0.04em;
+    }
+
+    .hero-photo .tick {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-color: var(--accent);
+      border-style: solid;
+      border-width: 0;
+    }
+
+    .hero-photo .tick.tl {
+      top: 8px;
+      left: 8px;
+      border-top-width: 1px;
+      border-left-width: 1px;
+    }
+
+    .hero-photo .tick.tr {
+      top: 8px;
+      right: 8px;
+      border-top-width: 1px;
+      border-right-width: 1px;
+    }
+
+    .hero-photo .tick.bl {
+      bottom: 8px;
+      left: 8px;
+      border-bottom-width: 1px;
+      border-left-width: 1px;
+    }
+
+    .hero-photo .tick.br {
+      bottom: 8px;
+      right: 8px;
+      border-bottom-width: 1px;
+      border-right-width: 1px;
+    }
+
+    /* about */
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 56px;
+    }
+
+    .about-body p {
+      color: var(--text-1);
+      font-size: 16px;
+      line-height: 1.75;
+      margin: 0 0 18px;
+    }
+
+    .about-body p strong {
+      color: var(--text-0);
+      font-weight: 500;
+    }
+
+    .about-side {
+      border-left: 1px solid var(--border);
+      padding-left: 28px;
+    }
+
+    .about-side .field {
+      margin-bottom: 22px;
+    }
+
+    .about-side .field-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .about-side .field-value {
+      color: var(--text-0);
+      font-size: 14px;
+    }
+
+    .about-side .field-value.mono {
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    /* stack */
+    .stack {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+    }
+
+    .stack-row {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+    }
+
+    .stack-row:nth-last-child(-n+2) {
+      border-bottom: 0;
+    }
+
+    .stack-row:nth-child(odd) {
+      border-right: 1px solid var(--border);
+    }
+
+    .stack-cat {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stack-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .stack-tag {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 4px 9px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text-1);
+    }
+
+    .cert-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      padding: 5px 11px;
+      background: rgba(245, 165, 36, 0.07);
+      border: 1px solid rgba(245, 165, 36, 0.3);
+      border-radius: var(--r-sm);
+      color: var(--accent);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .cert-btn:hover {
+      background: rgba(245, 165, 36, 0.14);
+      box-shadow: var(--glow);
+    }
+
+    .cert-btn svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    /* experience */
+    .exp {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .exp-row {
+      display: grid;
+      grid-template-columns: 160px 1fr auto;
+      gap: 32px;
+      padding: 28px 0;
+      border-top: 1px solid var(--border);
+      align-items: start;
+    }
+
+    .exp-row:last-child {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .exp-date {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-2);
+    }
+
+    .exp-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .exp-status .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .exp-status.active {
+      color: var(--status);
+    }
+
+    .exp-status.active .dot {
+      background: var(--status);
+      box-shadow: 0 0 6px var(--status);
+    }
+
+    .exp-status.past {
+      color: var(--text-3);
+    }
+
+    .exp-status.past .dot {
+      background: var(--text-3);
+    }
+
+    .exp-role {
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-weight: 600;
+      color: var(--text-0);
+      margin: 0 0 4px;
+      letter-spacing: -0.015em;
+    }
+
+    .exp-company {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .exp-desc {
+      color: var(--text-1);
+      font-size: 14.5px;
+      line-height: 1.65;
+      margin: 0;
+      max-width: 600px;
+    }
+
+    .exp-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .exp-tags .stack-tag {
+      font-size: 11px;
+      padding: 3px 8px;
+    }
+
+    .exp-side {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: right;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* projects */
+    .proj-band {
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--panel);
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+
+    .proj-band-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-1);
+    }
+
+    .proj-band-id {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .proj-band-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-0);
+      margin-left: 6px;
+    }
+
+    .proj-band-status {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--status);
+    }
+
+    .proj-band-body {
+      padding: 22px 24px;
+      color: var(--text-1);
+      font-size: 14.5px;
+      line-height: 1.7;
+    }
+
+    .proj-band-body p {
+      margin: 0 0 12px;
+    }
+
+    .proj-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .proj-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 22px 22px 18px;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .proj-card:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    /* hidden cards revealed via show more */
+    .proj-card.is-hidden,
+    .research-item.is-hidden {
+      display: none;
+    }
+
+    .proj-card-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .proj-card-id {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-3);
+      letter-spacing: 0.06em;
+    }
+
+    .proj-card-mode {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .proj-card-mode.user {
+      background: rgba(147, 183, 255, 0.06);
+      border: 1px solid rgba(147, 183, 255, 0.25);
+      color: var(--link);
+    }
+
+    .proj-card-mode.kernel {
+      background: rgba(245, 165, 36, 0.08);
+      border: 1px solid rgba(245, 165, 36, 0.3);
+      color: var(--accent);
+    }
+
+    .proj-card h3 {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 8px;
+      color: var(--text-0);
+      letter-spacing: -0.01em;
+    }
+
+    .proj-card .blurb {
+      color: var(--text-1);
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0 0 16px;
+      flex-grow: 1;
+    }
+
+    .proj-card .blurb strong {
+      color: var(--text-0);
+      font-weight: 500;
+    }
+
+    .proj-card .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 16px;
+    }
+
+    .proj-card .tag {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      padding: 2px 7px;
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text-2);
+    }
+
+    .proj-card-actions {
+      display: flex;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      margin-top: auto;
+    }
+
+    .proj-card-actions .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 9px 12px;
+      font-size: 12px;
+    }
+
+    /* show more control */
+    .show-more-wrap {
+      display: flex;
+      justify-content: center;
+      margin-top: 24px;
+    }
+
+    .show-more {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 22px;
+      border-radius: var(--r-md);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      border: 1px solid var(--border-strong);
+      background: var(--panel);
+      color: var(--text-0);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .show-more:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: var(--glow);
+    }
+
+    .show-more .count {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    .show-more svg {
+      width: 14px;
+      height: 14px;
+      transition: transform 0.2s ease;
+    }
+
+    /* restricted */
+    .proj-restricted {
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      margin-top: 14px;
+      padding: 28px;
+      background: repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(255, 255, 255, 0.012) 12px, rgba(255, 255, 255, 0.012) 24px);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .proj-restricted .lock {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--r-md);
+      background: var(--bg-1);
+      border: 1px solid var(--border-strong);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-2);
+      flex-shrink: 0;
+    }
+
+    .proj-restricted .lock svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .proj-restricted .info {
+      flex: 1;
+    }
+
+    .proj-restricted h4 {
+      font-family: var(--font-display);
+      font-size: 16px;
+      margin: 0 0 4px;
+      color: var(--text-0);
+      font-weight: 600;
+    }
+
+    .proj-restricted p {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--text-2);
+    }
+
+    .proj-restricted .badge {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      padding: 3px 8px;
+      background: rgba(248, 113, 113, 0.08);
+      border: 1px solid rgba(248, 113, 113, 0.25);
+      color: var(--warn);
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* research */
+    .research-intro {
+      color: var(--text-1);
+      font-size: 15px;
+      margin-bottom: 28px;
+      max-width: 680px;
+      line-height: 1.65;
+    }
+
+    .research-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .research-item {
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--panel);
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .research-item:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-2px);
+    }
+
+    .research-item .num {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-3);
+      margin-bottom: 6px;
+    }
+
+    .research-item .topic {
+      font-family: var(--font-display);
+      font-size: 15px;
+      color: var(--text-0);
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .research-item .note {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-2);
+    }
+
+    /* education */
+    .edu-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .edu-card {
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--panel);
+      padding: 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .edu-card:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-2px);
+    }
+
+    .edu-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .edu-card h4 {
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-weight: 600;
+      color: var(--text-0);
+      margin: 0;
+      letter-spacing: -0.015em;
+      line-height: 1.3;
+    }
+
+    .edu-card .program {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    .edu-card .meta {
+      font-size: 13.5px;
+      color: var(--text-2);
+      display: flex;
+      gap: 14px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+
+    .edu-card .meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .edu-card-actions {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .edu-card-actions .btn {
+      font-size: 11.5px;
+      padding: 8px 12px;
+    }
+
+    .edu-card.compact {
+      padding: 20px 22px;
+    }
+
+    .edu-card.compact h4 {
+      font-size: 16px;
+    }
+
+    /* contact */
+    .contact {
+      margin-top: 32px;
+      border-top: 1px solid var(--border);
+      padding: 56px 24px 32px;
+      max-width: var(--maxw);
+      margin-left: auto;
+      margin-right: auto;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 48px;
+    }
+
+    .contact h2 {
+      font-family: var(--font-display);
+      font-size: 38px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      margin: 0 0 18px;
+      color: var(--text-0);
+      line-height: 1.05;
+    }
+
+    .contact h2 .accent {
+      color: var(--accent);
+    }
+
+    .contact p {
+      color: var(--text-1);
+      font-size: 15px;
+      margin: 0 0 24px;
+      max-width: 480px;
+    }
+
+    .contact-list {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .contact-list li {
+      display: grid;
+      grid-template-columns: 90px 1fr;
+      gap: 16px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--panel);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      transition: border-color 0.15s ease;
+    }
+
+    .contact-list li:hover {
+      border-color: var(--border-strong);
+    }
+
+    .contact-list .key {
+      color: var(--text-3);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      align-self: center;
+    }
+
+    .contact-list .val {
+      color: var(--text-0);
+      word-break: break-all;
+    }
+
+    .contact-list .val a {
+      color: var(--text-0);
+      transition: color 0.15s ease;
+    }
+
+    .contact-list .val a:hover {
+      color: var(--accent);
+    }
+
+    /* footer */
+    .footer {
+      border-top: 1px solid var(--border);
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 32px 24px 40px;
+    }
+
+    .footer-top {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .footer-name {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-0);
+    }
+
+    .footer-role {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-2);
+    }
+
+    .footer-socials {
+      margin-left: auto;
+      display: flex;
+      gap: 10px;
+    }
+
+    .footer-socials a {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-1);
+      transition: all 0.15s ease;
+    }
+
+    .footer-socials a:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .footer-socials svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-3);
+    }
+
+    .footer-bottom a {
+      color: var(--text-2);
+      transition: color 0.15s ease;
+    }
+
+    .footer-bottom a:hover {
+      color: var(--accent);
+    }
+
+    /* modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 5, 11, 0.78);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      animation: fadeIn 0.18s ease;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .modal {
+      background: var(--bg-1);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-md);
+      max-width: 680px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      position: relative;
+      animation: modalIn 0.22s ease;
+    }
+
+    @keyframes modalIn {
+      from {
+        transform: translateY(12px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-head {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg-1);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .modal-head-id {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+    }
+
+    .modal-head h3 {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text-0);
+      letter-spacing: -0.02em;
+    }
+
+    .modal-close {
+      margin-left: auto;
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      color: var(--text-1);
+      width: 32px;
+      height: 32px;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .modal-close:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .modal-body {
+      padding: 24px 24px 28px;
+      color: var(--text-1);
+      font-size: 14.5px;
+      line-height: 1.7;
+    }
+
+    .modal-body p {
+      margin: 0 0 14px;
+    }
+
+    .modal-body strong {
+      color: var(--text-0);
+      font-weight: 500;
+    }
+
+    .modal-body h4 {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin: 22px 0 10px;
+      font-weight: 500;
+    }
+
+    .modal-body ul {
+      margin: 0 0 14px;
+      padding-left: 18px;
+    }
+
+    .modal-body ul li {
+      margin-bottom: 6px;
+    }
+
+    .modal-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 6px;
+    }
+
+    /* cert modal grid */
+    .cert-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .cert-slot {
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--r-md);
+      aspect-ratio: 4 / 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--text-3);
+      background: var(--bg-1);
+      text-align: center;
+      padding: 12px;
+    }
+
+    .cert-slot img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: var(--r-sm);
+    }
+
+    .cert-slot .ph-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-2);
+    }
+
+    .cert-slot .ph-sub {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-3);
+    }
+
+    .cert-slot svg {
+      width: 22px;
+      height: 22px;
+      color: var(--text-3);
+    }
+
+    /* responsive */
+    @media (max-width: 900px) {
+      .hero {
+        padding: 64px 20px 56px;
+        min-height: auto;
+      }
+
+      .about-grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .about-side {
+        border-left: 0;
+        padding-left: 0;
+        border-top: 1px solid var(--border);
+        padding-top: 24px;
+      }
+
+      .stack {
+        grid-template-columns: 1fr;
+      }
+
+      .stack-row {
+        grid-template-columns: 140px 1fr;
+        border-right: 0 !important;
+      }
+
+      .proj-cards {
+        grid-template-columns: 1fr;
+      }
+
+      .research-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .edu-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .contact {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .exp-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .exp-side {
+        text-align: left;
+      }
+
+      .section {
+        padding: 64px 20px;
+      }
+
+      .cert-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .status-bar {
+        display: none;
+      }
+
+      /* hide status bar on mobile */
+      .hero-photo {
+        display: none;
+      }
+
+      /* hide profile photo on mobile */
+      .nav-links {
+        display: none;
+      }
+
+      .nav-links.open {
+        display: flex;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        background: var(--bg-1);
+        border-bottom: 1px solid var(--border);
+        padding: 16px 24px;
+        gap: 14px;
+        margin: 0;
+      }
+
+      .nav-toggle {
+        display: inline-flex;
+      }
+
+      .section-title {
+        font-size: 24px;
+      }
+
+      .research-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stack-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .contact h2 {
+        font-size: 28px;
+      }
+
+      .footer-socials {
+        margin-left: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- status bar, desktop only -->
+  <div class="status-bar" role="status" aria-label="System status">
+    <div class="status-bar-inner">
+      <span><span class="dot"></span><span class="val">ONLINE</span></span>
+      <span class="sep">│</span>
+      <span><span class="label">role</span> <span class="val">research_engineer</span></span>
+      <span class="sep">│</span>
+      <span><span class="label">stack</span> <span class="val">C++ · Windows · EDR</span></span>
+      <span class="right">
+        <span class="label">loc</span> <span class="val">IN-MH</span>
+        <span class="sep">│</span>
+        <span class="label">last_push</span> <span class="val">2026.06</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- nav -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#top" class="brand"><span class="brand-prompt">$</span> prathmesh.thakare</a>
+      <button class="nav-toggle" aria-label="Toggle menu"
+        onclick="document.querySelector('.nav-links').classList.toggle('open')">menu</button>
+      <ul class="nav-links">
+        <li><a href="#about">about</a></li>
+        <li><a href="#stack">stack</a></li>
+        <li><a href="#experience">experience</a></li>
+        <li><a href="#work">work</a></li>
+        <li><a href="#projects">projects</a></li>
+        <li><a href="#research">research</a></li>
+        <li><a href="#education">education</a></li>
+        <li><a href="#contact">contact</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- hero -->
+  <header class="hero" id="top">
+    <div class="hero-inner">
+      <div class="hero-meta">
+        <span class="live-pill"><span class="dot"></span>currently @ NPAV</span>
+        <span>·</span>
+        <span>EDR · Windows Internals · Kernel Telemetry</span>
+      </div>
+      <h1>Prathmesh Thakare<span class="accent">.</span></h1>
+      <p class="hero-sub">
+        <strong>Trainee Research Engineer</strong> building endpoint detection &amp; security tooling for Windows.
+        I work with kernel ETW callbacks, netfilter-level network control, AV scan engines, and
+        low-level API hooking — both at <strong>Net Protector Antivirus (NPAV)</strong> and across 50+ personal builds.
+      </p>
+      <div class="cta-row">
+        <a href="#projects" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+          View projects
+        </a>
+        <a href="https://github.com/prathmeshthakare" target="_blank" rel="noopener" class="btn">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" />
+          </svg>
+          GitHub
+        </a>
+        <a href="https://linkedin.com/in/prathmeshthakare" target="_blank" rel="noopener" class="btn">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.3 18.3V9.7H5.7v8.6h2.6zM7 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.3 18.3v-4.9c0-2.4-1.3-3.5-3-3.5a2.6 2.6 0 0 0-2.4 1.3V9.7h-2.6v8.6h2.6V14a1.7 1.7 0 0 1 1.7-1.8c.9 0 1.6.6 1.6 1.7v4.4h2.1z" />
+          </svg>
+          LinkedIn
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- about -->
+  <section class="section" id="about">
+    <div class="section-head">
+      <span class="section-num">01 //</span>
+      <h2 class="section-title">About</h2>
+      <span class="section-tag">~/about.md</span>
+    </div>
+    <div class="about-grid">
+      <div class="about-body">
+        <p>
+          I'm a research-engineer-in-training focused on <strong>Windows security &amp; systems programming</strong>.
+          My day job at <strong>Net Protector Antivirus</strong> centers on <strong>EDR</strong> — building telemetry,
+          detection, and response components for endpoints.
+        </p>
+        <p>
+          Outside work, I build a steady stream of personal tools to dig deeper into the OS: process &amp; event
+          collectors via <strong>ETW kernel callbacks</strong>, a netfilter-driven <strong>network policy
+            service</strong>,
+          a <strong>ClamAV-backed file scanner</strong>, and Windows API hooking experiments with
+          <strong>MinHook</strong>.
+          Curiosity is the throughline — if a system has internals, I want to see them.
+        </p>
+        <p>
+          I'm also studying the broader research surface — reverse engineering, malware analysis, PE internals,
+          memory forensics — even when I haven't shipped a project on it yet.
+        </p>
+      </div>
+      <aside class="about-side" aria-label="Quick facts">
+        <div class="field">
+          <div class="field-label">Currently</div>
+          <div class="field-value">Trainee Research Engineer · NPAV</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Focus</div>
+          <div class="field-value">EDR · Kernel telemetry · Windows internals</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Primary language</div>
+          <div class="field-value mono">C++ &nbsp;//&nbsp; ~85% of personal code</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Personal projects</div>
+          <div class="field-value mono">50+ shipped to GitHub</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Based</div>
+          <div class="field-value">Maharashtra, India</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- stack -->
+  <section class="section" id="stack">
+    <div class="section-head">
+      <span class="section-num">02 //</span>
+      <h2 class="section-title">Stack</h2>
+      <span class="section-tag">~/stack.cfg</span>
+    </div>
+    <div class="stack" role="list">
+      <div class="stack-row" role="listitem">
+        <div class="stack-cat">Languages</div>
+        <div class="stack-items">
+          <span class="stack-tag">C++</span>
+          <span class="stack-tag">C</span>
+          <span class="stack-tag">Core Java</span>
+          <span class="stack-tag">JavaScript</span>
+        </div>
+      </div>
+      <div class="stack-row" role="listitem">
+        <div class="stack-cat">Windows Internals</div>
+        <div class="stack-items">
+          <span class="stack-tag">ETW</span>
+          <span class="stack-tag">Kernel Callbacks</span>
+          <span class="stack-tag">Win32 API</span>
+          <span class="stack-tag">Services</span>
+        </div>
+      </div>
+      <div class="stack-row" role="listitem">
+        <div class="stack-cat">Security &amp; Tooling</div>
+        <div class="stack-items">
+          <span class="stack-tag">EDR</span>
+          <span class="stack-tag">MinHook</span>
+          <span class="stack-tag">Netfilter SDK</span>
+          <span class="stack-tag">ClamAV</span>
+          <span class="stack-tag">API Hooking</span>
+        </div>
+      </div>
+      <div class="stack-row" role="listitem">
+        <div class="stack-cat">Web (foundational)</div>
+        <div class="stack-items">
+          <span class="stack-tag">HTML5</span>
+          <span class="stack-tag">CSS3</span>
+          <span class="stack-tag">Bootstrap</span>
+          <span class="stack-tag">JavaScript</span>
+        </div>
+      </div>
+      <div class="stack-row" role="listitem">
+        <div class="stack-cat">Workflow</div>
+        <div class="stack-items">
+          <span class="stack-tag">Git</span>
+          <span class="stack-tag">GitHub</span>
+          <span class="stack-tag">Visual Studio</span>
+          <span class="stack-tag">WinDbg</span>
+          <span class="stack-tag">Sysinternals</span>
+        </div>
+      </div>
+      <div class="stack-row" role="listitem">
+        <div class="stack-cat">Additional &amp; Certificates</div>
+        <div class="stack-items">
+          <span class="stack-tag">C++</span>
+          <span class="stack-tag">Core Java</span>
+          <span class="stack-tag">GCC-TBC Typing · EN 40 · MR 30</span>
+          <button class="cert-btn" onclick="openCerts()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+              <path d="M8.5 14l-1.5 7L12 18l5 3-1.5-7" />
+            </svg>
+            View certificates
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- experience -->
+  <section class="section" id="experience">
+    <div class="section-head">
+      <span class="section-num">03 //</span>
+      <h2 class="section-title">Experience</h2>
+      <span class="section-tag">~/experience.log</span>
+    </div>
+    <div class="exp">
+      <div class="exp-row">
+        <div class="exp-date">
+          <div class="exp-status active"><span class="dot"></span>active</div>
+          2025 — present
+        </div>
+        <div>
+          <h3 class="exp-role">Trainee Research Engineer</h3>
+          <div class="exp-company">Net Protector Antivirus (NPAV)</div>
+          <p class="exp-desc">
+            On the EDR team — building telemetry, detection, and response components for Windows endpoints.
+            Working hands-on with kernel-side data sources, scanning pipelines, and security research workflows
+            alongside multiple internal initiatives.
+          </p>
+          <div class="exp-tags">
+            <span class="stack-tag">EDR</span>
+            <span class="stack-tag">C++</span>
+            <span class="stack-tag">Windows</span>
+            <span class="stack-tag">Security Research</span>
+          </div>
+        </div>
+        <div class="exp-side">CURRENT</div>
+      </div>
+      <div class="exp-row">
+        <div class="exp-date">
+          <div class="exp-status past"><span class="dot"></span>past</div>
+          Feb 2024 — 2024
+        </div>
+        <div>
+          <h3 class="exp-role">Web Developer Intern</h3>
+          <div class="exp-company">Anishree Technologies LLP</div>
+          <p class="exp-desc">
+            Built frontend interfaces and full-stack practice projects — including an e-commerce application
+            and Spotify / Netflix UI clones — establishing the web fundamentals (HTML, CSS, JS, Bootstrap)
+            that still feed into tooling and reporting today.
+          </p>
+          <div class="exp-tags">
+            <span class="stack-tag">HTML</span>
+            <span class="stack-tag">CSS</span>
+            <span class="stack-tag">JavaScript</span>
+            <span class="stack-tag">Bootstrap</span>
+          </div>
+        </div>
+        <div class="exp-side">INTERNSHIP</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- company projects -->
+  <section class="section" id="work">
+    <div class="section-head">
+      <span class="section-num">04 //</span>
+      <h2 class="section-title">Company Projects</h2>
+      <span class="section-tag">npav · internal</span>
+    </div>
+
+    <div class="proj-band">
+      <div class="proj-band-head">
+        <span class="proj-band-id">PRJ-NPAV-01</span>
+        <span class="proj-band-title">Endpoint Detection &amp; Response (EDR)</span>
+        <span class="proj-band-status">● active</span>
+      </div>
+      <div class="proj-band-body">
+        <p>
+          Primary assignment on the NPAV research team. Working on detection &amp; telemetry components for the
+          company's endpoint security product — kernel-side data collection, event correlation, and the
+          groundwork for response actions on Windows endpoints.
+        </p>
+        <div class="proj-card-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px;">
+          <span class="stack-tag">C++</span>
+          <span class="stack-tag">Windows</span>
+          <span class="stack-tag">Kernel ETW</span>
+          <span class="stack-tag">Detection Engineering</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="proj-restricted">
+      <div class="lock" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </div>
+      <div class="info">
+        <h4>Additional internal projects</h4>
+        <p>Other initiatives across the research org. Details under NDA — happy to discuss scope and learnings in
+          conversation.</p>
+      </div>
+      <span class="badge">Restricted</span>
+    </div>
+  </section>
+
+  <!-- personal projects -->
+  <section class="section" id="projects">
+    <div class="section-head">
+      <span class="section-num">05 //</span>
+      <h2 class="section-title">Personal Projects</h2>
+      <span class="section-tag">~/github</span>
+    </div>
+
+    <div class="proj-cards" id="proj-cards">
+
+      <article class="proj-card" data-key="procmonsvc">
+        <div class="proj-card-top">
+          <span class="proj-card-id">PRJ-01 · WINDOWS-SVC</span>
+          <span class="proj-card-mode kernel">kernel</span>
+        </div>
+        <h3>procmonsvc</h3>
+        <p class="blurb">A Windows service that collects process activity via <strong>kernel ETW callbacks</strong> and
+          writes rolling daily logs. The lightweight, always-on observer running on the box.</p>
+        <div class="tags"><span class="tag">C++</span><span class="tag">Win32</span><span class="tag">ETW</span><span
+            class="tag">Service</span></div>
+        <div class="proj-card-actions">
+          <button class="btn" onclick="openModal('procmonsvc')">Read more</button>
+          <a class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" />
+            </svg>
+            Code
+          </a>
+        </div>
+      </article>
+
+      <article class="proj-card" data-key="pconsolsvc">
+        <div class="proj-card-top">
+          <span class="proj-card-id">PRJ-02 · WINDOWS-SVC</span>
+          <span class="proj-card-mode kernel">network</span>
+        </div>
+        <h3>pconsolsvc</h3>
+        <p class="blurb">Network policy engine: a service that enforces per-user network rules using the
+          <strong>Netfilter SDK</strong>. Block, allow, filter — driven entirely by the user's configured settings.</p>
+        <div class="tags"><span class="tag">C++</span><span class="tag">Netfilter SDK</span><span
+            class="tag">Network</span><span class="tag">Policy</span></div>
+        <div class="proj-card-actions">
+          <button class="btn" onclick="openModal('pconsolsvc')">Read more</button>
+          <a class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" />
+            </svg>
+            Code
+          </a>
+        </div>
+      </article>
+
+      <article class="proj-card" data-key="cmscanner">
+        <div class="proj-card-top">
+          <span class="proj-card-id">PRJ-03 · SCANNER</span>
+          <span class="proj-card-mode user">user-mode</span>
+        </div>
+        <h3>cmscanner</h3>
+        <p class="blurb">A file scanner with the <strong>ClamAV engine</strong> embedded internally — signature loading,
+          scan orchestration, and reporting wrapped in a tight CLI tool.</p>
+        <div class="tags"><span class="tag">C++</span><span class="tag">ClamAV</span><span
+            class="tag">Scanning</span><span class="tag">CLI</span></div>
+        <div class="proj-card-actions">
+          <button class="btn" onclick="openModal('cmscanner')">Read more</button>
+          <a class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" />
+            </svg>
+            Code
+          </a>
+        </div>
+      </article>
+
+      <article class="proj-card" data-key="winhook64">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-04 · DLL · API MONITORING</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>WinHook64.dll</h3>
+        <p class="blurb"> A 64-bit API monitoring DLL built with <strong>MinHook</strong> that intercepts Windows API
+          calls, captures operational details, and generates structured process-specific logs while preserving original
+          API behavior. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">MinHook</span> <span class="tag">DLL</span>
+          <span class="tag">API Hooking</span> <span class="tag">Win32 API</span> <span class="tag">Monitoring</span>
+        </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('winhook64')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <!-- 5th card, hidden until show more -->
+      <article class="proj-card is-hidden" data-key="updater">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-05 · WINDOWS-UPDATER</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>Updater.exe</h3>
+        <p class="blurb"> A Windows MFC-based update management tool that automatically scans installed modules,
+          compares versions with the update server, downloads newer files, installs missing features, and supports both
+          <strong>silent deployment</strong> and <strong>interactive update workflows</strong>. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">MFC</span> <span class="tag">Windows</span>
+          <span class="tag">Updater</span> <span class="tag">Deployment</span> <span class="tag">Automation</span>
+        </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('updater')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> <svg
+              viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" />
+            </svg> Code </a> </div>
+      </article>
+
+      <!-- 7th card -->
+      <article class="proj-card is-hidden" data-key="icollector">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-06 · FORENSICS</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>ICollector.exe</h3>
+        <p class="blurb"> A Windows MFC-based browser forensic collection tool that extracts and analyzes browsing
+          history from <strong>Google Chrome</strong> and <strong>Microsoft Edge</strong> using SQLite databases.
+          Supports silent execution, multi-user profile analysis, download history parsing, and human-readable timeline
+          generation. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">MFC</span> <span class="tag">SQLite</span>
+          <span class="tag">Chrome</span> <span class="tag">Microsoft Edge</span> <span class="tag">Digital
+            Forensics</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('icollector')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="inject-winhook">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-07 · DLL INJECTION</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>Inject_WinHook64.dll</h3>
+        <p class="blurb"> A controlled DLL injection framework that deploys <strong>WinHook64.dll</strong> into selected
+          processes using PID-based targeting, configuration-driven filtering, and automated hook initialization. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">DLL Injection</span> <span
+            class="tag">Windows</span> <span class="tag">API Hooking</span> <span class="tag">Process Monitoring</span>
+        </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('inject-winhook')"> Read more </button>
+          <a class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="findusers">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-08 · USER ENUMERATION</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>FINDUSERS.EXE</h3>
+        <p class="blurb"> A Windows MFC-based account inspection tool that retrieves detailed local user information
+          using <strong>NetUserGetInfo (Level 3)</strong> and presents account, security, profile, and logon details in
+          a structured interface. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">MFC</span> <span class="tag">Windows
+            API</span> <span class="tag">NetUserGetInfo</span> <span class="tag">User Enumeration</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('findusers')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="fileview">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-09 · FILE FORENSICS</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>FileView</h3>
+        <p class="blurb"> A forensic file analysis tool that extracts metadata, SHA-256 hashes, digital signature
+          details, publisher information, Zone Identifier data, and file origin information from Windows files. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">MFC</span> <span class="tag">SHA-256</span>
+          <span class="tag">Digital Signatures</span> <span class="tag">PE Analysis</span> <span
+            class="tag">Forensics</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('fileview')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="sysinfo-dll">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-10 · SYSTEM INVENTORY</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>System Information Utility DLL</h3>
+        <p class="blurb"> A reusable Windows DLL that collects hardware and software inventory information including
+          CPU, memory, storage, operating system details, and system configuration, exporting results in a structured
+          INI format. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">DLL</span> <span class="tag">Win32 API</span>
+          <span class="tag">System Inventory</span> <span class="tag">Hardware Info</span> <span class="tag">INI</span>
+        </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('sysinfo-dll')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="winauditmgr">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-11 · WINDOWS AUDITING</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>WinAuditMgr.dll</h3>
+        <p class="blurb"> A Windows auditing and event parsing library that enables audit policy management and converts
+          raw Windows Event XML into structured C++ objects for monitoring, compliance, and security analysis workflows.
+        </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">Windows Auditing</span> <span
+            class="tag">Event Logs</span> <span class="tag">XML Parsing</span> <span class="tag">Security</span> <span
+            class="tag">Monitoring</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('winauditmgr')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="pcconsol">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-12 · PARENTAL CONTROL UI</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>PCConsol.exe</h3>
+        <p class="blurb"> A Windows MFC-based management console for configuring parental control policies, category
+          restrictions, keyword filtering, URL exclusions, and real-time synchronization with PCConsolSvc.exe. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">MFC</span> <span class="tag">SQLite</span>
+          <span class="tag">Parental Control</span> <span class="tag">Windows Service</span> <span class="tag">Policy
+            Management</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('pcconsol')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="appblocker">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-13 · APPLICATION CONTROL</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>AppBlocker.exe</h3>
+        <p class="blurb"> A Windows application control utility that uses <strong>Image File Execution Options
+            (IFEO)</strong> to block or unblock executables at the operating system level, while maintaining a complete
+          audit history of administrative actions. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">MFC</span> <span class="tag">Windows
+            Registry</span> <span class="tag">IFEO</span> <span class="tag">Application Control</span> <span
+            class="tag">Endpoint Security</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('appblocker')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="cryptocore">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-14 · CRYPTOGRAPHY & SECURE STORAGE</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>CryptoCore DLL</h3>
+        <p class="blurb"> A reusable security-focused DLL that provides encrypted configuration management, secure
+          logging, and file encryption/decryption services with ANSI and Unicode support. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">DLL</span> <span
+            class="tag">Cryptography</span> <span class="tag">Encryption</span> <span class="tag">Secure Storage</span>
+          <span class="tag">Windows</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('cryptocore')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="netutils">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-15 · NETWORK UTILITIES</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>NetUtils DLL</h3>
+        <p class="blurb"> A lightweight networking utility library that provides real-time internet speed validation,
+          bandwidth checks, and local IPv4 discovery for Windows applications, services, and diagnostic tools. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">DLL</span> <span class="tag">WinHTTP</span>
+          <span class="tag">Networking</span> <span class="tag">Bandwidth</span> <span class="tag">IPv4</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('netutils')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="mtfixersvc">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-16 · SYSTEM MAINTENANCE SERVICE</span> <span
+            class="proj-card-mode kernel">service</span> </div>
+        <h3>MTFixerSvc</h3>
+        <p class="blurb"> A multithreaded Windows service that automates maintenance, repair, scheduled task validation,
+          database recovery, and self-healing operations through continuous background monitoring. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">Windows Service</span> <span
+            class="tag">Multithreading</span> <span class="tag">Task Scheduler</span> <span
+            class="tag">Self-Healing</span> <span class="tag">Automation</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('mtfixersvc')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="pconsolsvc-dll">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-17 · URL FILTERING ENGINE</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>PConsolSvc.dll</h3>
+        <p class="blurb"> A high-performance URL classification and policy engine that powers real-time parental control
+          enforcement through category filtering, keyword matching, exclusions, encrypted settings, and MD5-based
+          caching. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">SQLite</span> <span class="tag">NetFilter
+            SDK</span> <span class="tag">URL Filtering</span> <span class="tag">Caching</span> <span class="tag">Network
+            Security</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('pconsolsvc-dll')"> Read more </button>
+          <a class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="cmscanner">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-18 · MALWARE SCANNING ENGINE</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>CMScanner.dll</h3>
+        <p class="blurb"> A reusable malware scanning framework built on top of the ClamAV engine, supporting
+          multi-engine operation, custom signature databases, file scanning, and in-memory threat detection. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">ClamAV</span> <span class="tag">Malware
+            Detection</span> <span class="tag">Memory Scanning</span> <span class="tag">Security</span> <span
+            class="tag">DLL</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('cmscanner')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="gendb">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-19 · THREAT INTELLIGENCE PLATFORM</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>GenDB.exe</h3>
+        <p class="blurb"> A URL intelligence database generator that downloads threat feeds, validates URLs, classifies
+          active resources, generates MD5 fingerprints, and builds optimized databases for filtering and security
+          products. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">MFC</span> <span class="tag">Threat
+            Intel</span> <span class="tag">URL Analysis</span> <span class="tag">MD5</span> <span
+            class="tag">Security</span> </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('gendb')"> Read more </button> <a
+            class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a> </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="useractivitymonitor">
+        <div class="proj-card-top"> <span class="proj-card-id">PRJ-20 · USER ACTIVITY MONITORING</span> <span
+            class="proj-card-mode user">user-mode</span> </div>
+        <h3>UserActivityMonitor.exe</h3>
+        <p class="blurb"> A Windows monitoring platform that captures clipboard activity, user idle time, and
+          screenshots through a configurable multithreaded architecture with structured telemetry logging. </p>
+        <div class="tags"> <span class="tag">C++</span> <span class="tag">MFC</span> <span class="tag">Monitoring</span>
+          <span class="tag">Clipboard</span> <span class="tag">Telemetry</span> <span class="tag">Screenshots</span>
+        </div>
+        <div class="proj-card-actions"> <button class="btn" onclick="openModal('useractivitymonitor')"> Read more
+          </button> <a class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener"> Code </a>
+        </div>
+      </article>
+
+      <article class="proj-card is-hidden" data-key="screenpulse">
+        <div class="proj-card-top">
+          <span class="proj-card-id">PRJ-21 · SCREEN CAPTURE LIBRARY</span>
+          <span class="proj-card-mode user">user-mode</span>
+        </div>
+
+        <h3>ScreenPulse.dll</h3>
+
+        <p class="blurb">
+          A lightweight Windows DLL that captures full-screen
+          screenshots, supports multi-monitor environments,
+          and saves timestamped PNG images using GDI+.
+        </p>
+
+        <div class="tags">
+          <span class="tag">C++</span>
+          <span class="tag">DLL</span>
+          <span class="tag">GDI+</span>
+          <span class="tag">PNG</span>
+          <span class="tag">Screen Capture</span>
+          <span class="tag">Win32</span>
+        </div>
+
+        <div class="proj-card-actions">
+          <button class="btn" onclick="openModal('screenpulse')">
+            Read more
+          </button>
+
+          <a class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener">
+            Code
+          </a>
+        </div>
+      </article>
+
+
+      <article class="proj-card is-hidden" data-key="installer">
+        <div class="proj-card-top">
+          <span class="proj-card-id">PRJ-22 · INSTALLATION FRAMEWORK</span>
+          <span class="proj-card-mode user">user-mode</span>
+        </div>
+
+        <h3>Product Installer</h3>
+
+        <p class="blurb">
+          A custom MFC-based Windows installation framework
+          that deploys binaries, installs dependencies,
+          validates installation state, and manages product
+          setup without third-party installer tools.
+        </p>
+
+        <div class="tags">
+          <span class="tag">C++</span>
+          <span class="tag">MFC</span>
+          <span class="tag">Installer</span>
+          <span class="tag">Deployment</span>
+          <span class="tag">Windows</span>
+          <span class="tag">Setup</span>
+        </div>
+
+        <div class="proj-card-actions">
+          <button class="btn" onclick="openModal('installer')">
+            Read more
+          </button>
+
+          <a class="btn" href="https://github.com/prathmeshthakare" target="_blank" rel="noopener">
+            Code
+          </a>
+        </div>
+      </article>
+
+
+    </div>
+
+    <div class="show-more-wrap">
+      <button class="show-more" id="proj-more" onclick="revealMore('proj-cards','proj-more','.proj-card')">
+        <span>Show more</span>
+        <span class="count" id="proj-more-count"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- research -->
+  <section class="section" id="research">
+    <div class="section-head">
+      <span class="section-num">06 //</span>
+      <h2 class="section-title">Research Interests</h2>
+      <span class="section-tag">~/learning</span>
+    </div>
+    <p class="research-intro">Topics I'm actively studying, even where I haven't shipped a project yet. These are the
+      directions the work is moving toward.</p>
+    <div class="research-grid" id="research-grid">
+      <div class="research-item">
+        <div class="num">R-01</div>
+        <div class="topic">Reverse Engineering</div>
+        <div class="note">PE binaries · disassembly · static analysis</div>
+      </div>
+      <div class="research-item">
+        <div class="num">R-02</div>
+        <div class="topic">Malware Analysis</div>
+        <div class="note">Behavior triage · IOCs · sandboxing</div>
+      </div>
+      <div class="research-item">
+        <div class="num">R-03</div>
+        <div class="topic">Kernel-mode Drivers</div>
+        <div class="note">WDM / WDF · minifilters · IRPs</div>
+      </div>
+      <div class="research-item">
+        <div class="num">R-04</div>
+        <div class="topic">PE Format Internals</div>
+        <div class="note">Headers · sections · imports · loader</div>
+      </div>
+      <div class="research-item">
+        <div class="num">R-05</div>
+        <div class="topic">Anti-Debugging Techniques</div>
+        <div class="note">Detection patterns · bypass strategies</div>
+      </div>
+      <div class="research-item">
+        <div class="num">R-06</div>
+        <div class="topic">Memory Forensics</div>
+        <div class="note">Process memory · injection traces · volatility</div>
+      </div>
+      <div class="research-item is-hidden">
+        <div class="num">R-07</div>
+        <div class="topic">Detection Engineering</div>
+        <div class="note">Rule design · telemetry shape · MITRE mapping</div>
+      </div>
+      <div class="research-item is-hidden">
+        <div class="num">R-08</div>
+        <div class="topic">Windows Internals (Russinovich)</div>
+        <div class="note">Object manager · processes · scheduling</div>
+      </div>
+      <div class="research-item is-hidden">
+        <div class="num">R-09</div>
+        <div class="topic">Network Protocol Analysis</div>
+        <div class="note">TCP/IP layers · packet inspection · filtering</div>
+      </div>
+    </div>
+    <div class="show-more-wrap">
+      <button class="show-more" id="research-more"
+        onclick="revealMore('research-grid','research-more','.research-item')">
+        <span>Show more</span>
+        <span class="count" id="research-more-count"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- education -->
+  <section class="section" id="education">
+    <div class="section-head">
+      <span class="section-num">07 //</span>
+      <h2 class="section-title">Education</h2>
+      <span class="section-tag">~/education</span>
+    </div>
+    <div class="edu-grid">
+      <article class="edu-card">
+        <div class="edu-card-head"><span>EDU-01 · Postgraduate</span><span>2022 — 2024</span></div>
+        <h4>G H Raisoni University</h4>
+        <div class="program">Master of Computer Application (MCA)</div>
+        <div class="meta"><span>📍 Amravati, Maharashtra</span><span>🎓 2024</span></div>
+        <div class="edu-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="https://ghru.edu.in/" target="_blank" rel="noopener" class="btn">Visit university
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M7 17L17 7M7 7h10v10" />
+            </svg>
+          </a>
+          <button class="btn" onclick="openEduCerts('mca')">View certificates</button>
+        </div>
+      </article>
+
+      <article class="edu-card">
+        <div class="edu-card-head"><span>EDU-02 · Undergraduate</span><span>2019 — 2022</span></div>
+        <h4>Sant Gadge Baba Amravati University</h4>
+        <div class="program">Bachelor of Computer Application (BCA)</div>
+        <div class="meta"><span>📍 Amravati, Maharashtra</span><span>🎓 2022</span></div>
+        <div class="edu-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="https://sgbau.ac.in/" target="_blank" rel="noopener" class="btn">Visit university
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M7 17L17 7M7 7h10v10" />
+            </svg>
+          </a>
+          <button class="btn" onclick="openEduCerts('bca')">View certificates</button>
+        </div>
+      </article>
+
+      <article class="edu-card compact">
+        <div class="edu-card-head"><span>EDU-03 · Higher Secondary</span><span>2019</span></div>
+        <h4>HSC — Amravati</h4>
+        <div class="program">12th · Higher Secondary Certificate</div>
+        <div class="meta"><span>📍 Amravati, Maharashtra</span></div>
+        <div class="edu-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="https://sgbau.ac.in/" target="_blank" rel="noopener" class="btn">Visit university
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M7 17L17 7M7 7h10v10" />
+            </svg>
+          </a>
+          <button class="btn" onclick="openEduCerts('hsc')">View certificate</button>
+        </div>
+      </article>
+
+      <article class="edu-card compact">
+        <div class="edu-card-head"><span>EDU-04 · Secondary</span><span>2017</span></div>
+        <h4>SSC — Amravati</h4>
+        <div class="program">10th · Secondary School Certificate</div>
+        <div class="meta"><span>📍 Amravati, Maharashtra</span></div>
+        <div class="edu-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="https://sgbau.ac.in/" target="_blank" rel="noopener" class="btn">Visit university
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M7 17L17 7M7 7h10v10" />
+            </svg>
+          </a>
+          <button class="btn" onclick="openEduCerts('ssc')">View certificate</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- contact -->
+  <section class="contact" id="contact">
+    <div>
+      <h2>Let's talk<span class="accent">.</span></h2>
+      <p>Open to research conversations, collaboration on Windows / security tooling, or just sharing notes on what
+        you're reverse-engineering this week. The fastest reply is on email or LinkedIn.</p>
+      <div class="cta-row">
+        <a href="mailto:prathmeshthakare76@gmail.com" class="btn btn-primary">Send email
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M5 12h14M13 5l7 7-7 7" />
+          </svg>
+        </a>
+        <a href="https://linkedin.com/in/prathmeshthakare" target="_blank" rel="noopener" class="btn">LinkedIn</a>
+      </div>
+    </div>
+    <ul class="contact-list" aria-label="Contact details">
+      <li><span class="key">Email</span><span class="val"><a
+            href="mailto:prathmeshthakare76@gmail.com">prathmeshthakare76@gmail.com</a></span></li>
+      <li><span class="key">Phone</span><span class="val"><a href="tel:+917666223435">+91 7666223435</a></span></li>
+      <li><span class="key">LinkedIn</span><span class="val"><a href="https://linkedin.com/in/prathmeshthakare"
+            target="_blank" rel="noopener">linkedin.com/in/prathmeshthakare</a></span></li>
+      <li><span class="key">GitHub</span><span class="val"><a href="https://github.com/prathmeshthakare" target="_blank"
+            rel="noopener">github.com/prathmeshthakare</a></span></li>
+      <li><span class="key">Location</span><span class="val">Maharashtra, India</span></li>
+    </ul>
+  </section>
+
+  <!-- footer -->
+  <footer class="footer">
+    <div class="footer-top">
+      <div>
+        <div class="footer-name">Prathmesh Thakare</div>
+        <div class="footer-role">Trainee Research Engineer · Windows Security &amp; EDR</div>
+      </div>
+      <div class="footer-socials">
+        <a href="https://github.com/prathmeshthakare" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3" />
+          </svg>
+        </a>
+        <a href="https://linkedin.com/in/prathmeshthakare" target="_blank" rel="noopener" aria-label="LinkedIn">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.3 18.3V9.7H5.7v8.6h2.6zM7 8.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM18.3 18.3v-4.9c0-2.4-1.3-3.5-3-3.5a2.6 2.6 0 0 0-2.4 1.3V9.7h-2.6v8.6h2.6V14a1.7 1.7 0 0 1 1.7-1.8c.9 0 1.6.6 1.6 1.7v4.4h2.1z" />
+          </svg>
+        </a>
+        <a href="mailto:prathmeshthakare76@gmail.com" aria-label="Email">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="M3 7l9 6 9-6" />
+          </svg>
+        </a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Prathmesh Thakare. All rights reserved.</span>
+      <span>Designed &amp; developed by Prathmesh Thakare · Amravati, India</span>
+    </div>
+  </footer>
+
+  <!-- project modal -->
+  <div class="modal-overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div class="modal-head">
+        <span class="modal-head-id" id="modal-id">PRJ-XX</span>
+        <h3 id="modal-title">Project</h3>
+        <button class="modal-close" aria-label="Close" onclick="closeModal()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- certificates modal -->
+  <div class="modal-overlay" id="cert-modal" role="dialog" aria-modal="true" aria-labelledby="cert-title">
+    <div class="modal">
+      <div class="modal-head">
+        <span class="modal-head-id">CERT</span>
+        <h3 id="cert-title">Certificates</h3>
+        <button class="modal-close" aria-label="Close" onclick="closeCerts()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:18px;color:var(--text-2);font-size:13.5px;">Drop your certificate images into
+          <strong>assets/certs/</strong> and update the <code>src</code> paths below.</p>
+        <div class="cert-grid">
+          <div class="cert-slot" data-cert="cpp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M9 21V9" />
+            </svg>
+            <span class="ph-label">C++ Certificate</span>
+            <span class="ph-sub">assets/certs/cpp.jpg</span>
+          </div>
+          <div class="cert-slot" data-cert="java">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M9 21V9" />
+            </svg>
+            <span class="ph-label">Core Java Certificate</span>
+            <span class="ph-sub">assets/certs/java.jpg</span>
+          </div>
+          <div class="cert-slot" data-cert="typing">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M9 21V9" />
+            </svg>
+            <span class="ph-label">GCC-TBC Typing</span>
+            <span class="ph-sub">assets/certs/typing.jpg</span>
+          </div>
+          <div class="cert-slot" data-cert="extra">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M9 21V9" />
+            </svg>
+            <span class="ph-label">Additional</span>
+            <span class="ph-sub">assets/certs/extra.jpg</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- education certificates modal -->
+  <div class="modal-overlay" id="edu-cert-modal" role="dialog" aria-modal="true" aria-labelledby="edu-cert-title">
+    <div class="modal">
+      <div class="modal-head">
+        <span class="modal-head-id">EDU · CERT</span>
+        <h3 id="edu-cert-title">Certificates</h3>
+        <button class="modal-close" aria-label="Close" onclick="closeEduCerts()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:18px;color:var(--text-2);font-size:13.5px;">Drop your marksheets / certificates into
+          <strong>assets/certs/</strong> and update the <code>src</code> paths below.</p>
+        <div class="cert-grid" id="edu-cert-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // project modal content
+    const projects = {
+      "procmonsvc": {
+        id: "PRJ-01 · WINDOWS-SVC", title: "procmonsvc", body: `
+    <p><strong>What it is.</strong> A Windows service that observes process activity on the host and writes structured daily logs. It runs quietly in the background and is the first thing I reach for when I need a ground-truth view of what's actually running.</p>
+    <h4>How it works</h4>
+    <ul>
+      <li>Subscribes to <strong>kernel-level ETW providers</strong> for process lifecycle events.</li>
+      <li>Captures process create / exit, image loads, and parent-child relationships.</li>
+      <li>Buffers events in-memory and flushes to a daily rolling log file.</li>
+      <li>Runs as a long-lived <strong>Windows Service</strong> — installable, recoverable, survives reboots.</li>
+    </ul>
+    <h4>Why I built it</h4>
+    <p>To internalize how EDR telemetry pipelines actually look end-to-end — not just read about ETW, but build something that uses it.</p>
+    <div class="modal-tags"><span class="stack-tag">C++</span><span class="stack-tag">Win32 API</span><span class="stack-tag">ETW</span><span class="stack-tag">Kernel Callbacks</span></div>` },
+      "pconsolsvc": { id: "PRJ-02 · WINDOWS-SVC", title: "PConsolSvc.exe", body: ` <p><strong>What it is.</strong> A Windows-based parental control and network filtering service designed to enforce internet access policies through real-time traffic inspection and domain-level blocking. Built using C++ and the NetFilter SDK, the service operates in the background and provides centralized network policy enforcement without requiring browser extensions or manual firewall configuration.</p> <h4>Key Features</h4> <ul> <li><strong>Real-Time Network Filtering</strong> – Intercepts inbound and outbound traffic using the NetFilter SDK and applies filtering rules before requests reach user applications.</li> <li><strong>Website & Domain Blocking</strong> – Restricts access to websites and services defined in configurable block lists.</li> <li><strong>Custom Block Pages</strong> – Displays user-friendly HTML-based block pages when access to restricted content is attempted.</li> <li><strong>Dynamic Policy Management</strong> – Updates rules and domain lists without requiring service restarts.</li> <li><strong>Service-Based Enforcement</strong> – Runs as a Windows service ensuring policies remain active across user sessions and system reboots.</li> <li><strong>Logging & Auditing</strong> – Records blocked requests and policy actions for monitoring and troubleshooting.</li> </ul> <h4>How it works</h4> <ul> <li>Hooks into the Windows networking stack through the <strong>NetFilter SDK</strong>.</li> <li>Inspects outgoing and incoming connections in real time.</li> <li>Matches requests against configurable allow lists and block lists.</li> <li>Redirects blocked requests to a customizable HTML block page.</li> <li>Loads policy changes dynamically from configuration files without interrupting service operation.</li> <li>Operates as a background Windows service for continuous enforcement.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>Kernel-level packet filtering via NetFilter SDK.</li> <li>High-performance implementation using C++.</li> <li>Configuration-driven architecture (JSON/INI support).</li> <li>Custom HTML block page support.</li> <li>Windows Service architecture.</li> <li>Compatible with Windows 10 and Windows 11 (x64).</li> </ul> <h4>Why I built it</h4> <p>I wanted to understand how enterprise-grade internet control systems work beneath the user interface. The project explores network interception, policy enforcement, service development, and real-time traffic filtering while providing a practical parental-control and organizational internet restriction solution.</p> <h4>Future Roadmap</h4> <ul> <li>Web-based policy management portal.</li> <li>User-specific filtering rules.</li> <li>Detailed reporting and analytics dashboard.</li> <li>Time-based and schedule-based restrictions.</li> <li>Application-level network control.</li> </ul> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">Windows Service</span> <span class="stack-tag">NetFilter SDK</span> <span class="stack-tag">Network Filtering</span> <span class="stack-tag">Parental Control</span> <span class="stack-tag">System Programming</span> </div> ` },
+      "cmscanner": {
+        id: "PRJ-03 · SCANNER", title: "cmscanner", body: `
+    <p><strong>What it is.</strong> A file scanner that wraps the <strong>ClamAV engine</strong> internally — load the signature database, walk a path, scan, report.</p>
+    <h4>How it works</h4>
+    <ul>
+      <li>Integrates ClamAV's scan engine as an embedded library, not via subprocess.</li>
+      <li>Handles signature loading, scan-context lifecycle, and recursive directory walks.</li>
+      <li>Outputs structured results — clean / infected / error — for downstream tooling.</li>
+    </ul>
+    <h4>Why I built it</h4>
+    <p>Wanted hands-on time with an open-source AV engine — how signatures load, how scan contexts work, what an AV actually does at the API level.</p>
+    <div class="modal-tags"><span class="stack-tag">C++</span><span class="stack-tag">ClamAV</span><span class="stack-tag">libclamav</span></div>` },
+      "winhook64": { id: "PRJ-04 · DLL · API MONITORING", title: "WinHook64.dll", body: ` <p><strong>What it is.</strong> A 64-bit API monitoring DLL built using <strong>MinHook</strong> that intercepts selected Windows API calls and generates detailed activity logs. The library is designed for monitoring, analysis, and behavioral observation while preserving the original functionality of the hooked APIs.</p> <h4>Key Features</h4> <ul> <li>64-bit Windows API monitoring.</li> <li>Built on top of the MinHook hooking framework.</li> <li>Non-intrusive monitoring approach.</li> <li>Structured and timestamped activity logging.</li> <li>Process-specific log file generation.</li> <li>Extensible architecture for additional API hooks.</li> </ul> <h4>How it works</h4> <ul> <li>Injects into target processes and installs API hooks using MinHook.</li> <li>Intercepts selected Win32 API calls before execution.</li> <li>Captures relevant parameters such as file paths and operation details.</li> <li>Records timestamps, process names, and API activity.</li> <li>Invokes the original API to preserve normal application behavior.</li> <li>Stores monitoring data in process-specific log files.</li> </ul> <h4>Example Monitoring Event</h4> <pre>[20/02/2026 23:32:52] [CopyFileW] [G:\\test1.txt] [G:\\prathmesht\\testhook.txt]</pre> <h4>Technical Highlights</h4> <ul> <li>64-bit DLL implementation.</li> <li>MinHook-based API interception.</li> <li>CopyFileW and file operation monitoring.</li> <li>Per-process logging architecture.</li> <li>Timestamped event collection.</li> <li>Behavioral monitoring without API modification.</li> </ul> <h4>Why I built it</h4> <p>I wanted to gain a deeper understanding of Windows API interception, runtime instrumentation, and behavioral monitoring. The project provided hands-on experience with DLL injection concepts, API hooking mechanisms, and low-level Windows internals while maintaining application stability.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">MinHook</span> <span class="stack-tag">Win32 API</span> <span class="stack-tag">DLL</span> <span class="stack-tag">API Hooking</span> <span class="stack-tag">Monitoring</span> </div> ` },
+
+      "updater": { id: "PRJ-05 · WINDOWS-UPDATER", title: "Updater.exe", body: ` <p><strong>What it is.</strong> A Windows MFC-based software update framework that automatically detects product updates, downloads newer modules, installs missing features, and keeps applications synchronized with the latest release versions. The updater supports both interactive UI mode and fully automated silent deployment mode.</p> <h4>Key Features</h4> <ul> <li><strong>Automatic Version Management</strong> – Scans installed modules and compares them against versions available on the update server.</li> <li><strong>Silent Update Mode</strong> – Runs completely in the background using <strong>/s</strong> or <strong>/silent</strong> command-line parameters.</li> <li><strong>Interactive UI Mode</strong> – Displays update progress, download status, installation steps, and error reporting.</li> <li><strong>Incremental Updates</strong> – Downloads only outdated modules instead of reinstalling the entire product.</li> <li><strong>Feature Expansion Support</strong> – Detects and installs newly introduced product modules automatically.</li> <li><strong>Comprehensive Logging</strong> – Tracks scanning, downloads, installations, and update activities for troubleshooting.</li> </ul> <h4>How it works</h4> <ul> <li>Scans the installation directory recursively and reads version information from EXE and DLL files.</li> <li>Generates a local version inventory file (<strong>localversion.ini</strong>).</li> <li>Downloads <strong>latestversion.ini</strong> from the update server.</li> <li>Compares local and server-side versions module by module.</li> <li>Downloads and replaces outdated binaries automatically.</li> <li>Retrieves <strong>newfeature.ini</strong> to identify newly available modules.</li> <li>Installs missing features without requiring a complete reinstallation.</li> <li>Records all update operations into log files for auditing and diagnostics.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>Built using C++ and MFC.</li> <li>Recursive file and version scanning.</li> <li>INI-based version management system.</li> <li>Background silent deployment support.</li> <li>Automatic feature installation workflow.</li> <li>Detailed logging and error tracking.</li> <li>Designed for enterprise software maintenance and deployment.</li> </ul> <h4>Why I built it</h4> <p>Managing application updates manually becomes difficult as products grow and new modules are introduced. I built this updater to automate version tracking, incremental updates, feature deployment, and silent installations while gaining deeper experience with Windows application lifecycle management and deployment workflows.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">MFC</span> <span class="stack-tag">Windows</span> <span class="stack-tag">Software Updates</span> <span class="stack-tag">Version Management</span> <span class="stack-tag">Deployment</span> <span class="stack-tag">Automation</span> </div> ` },
+
+      "icollector": { id: "PRJ-07 · FORENSICS", title: "ICollector.exe", body: ` <p><strong>What it is.</strong> A Windows MFC-based browser forensic collection tool designed to extract, parse, and display browsing history from <strong>Google Chrome</strong> and <strong>Microsoft Edge</strong>. The application supports both silent background execution and interactive analysis through a graphical interface.</p> <h4>Key Features</h4> <ul> <li>Chrome and Microsoft Edge history collection.</li> <li>Silent mode support using command-line switches.</li> <li>Interactive GUI for browsing and filtering data.</li> <li>Multi-user and multi-profile browser analysis.</li> <li>SQLite-based history and download parsing.</li> <li>Automatic Chromium timestamp conversion.</li> <li>Structured forensic data presentation.</li> </ul> <h4>How it works</h4> <ul> <li>Locates browser profile databases for Chrome and Edge.</li> <li>Creates safe snapshots of SQLite databases.</li> <li>Extracts URL history, downloads, and browsing activity.</li> <li>Converts Chromium timestamps into readable local time.</li> <li>Displays results in categorized tables for investigation.</li> <li>Supports silent collection for automated workflows.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>MFC-based Windows application.</li> <li>SQLite database integration.</li> <li>Multi-profile browser support.</li> <li>Chrome & Microsoft Edge compatibility.</li> <li>Read-only forensic data acquisition.</li> <li>Command-line automation support.</li> </ul> <h4>Why I built it</h4> <p>I wanted to understand browser artifact collection, SQLite-based forensic analysis, and automated evidence gathering. The project provided hands-on experience with browser internals, timestamp conversion, profile management, and forensic data processing workflows.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">MFC</span> <span class="stack-tag">SQLite</span> <span class="stack-tag">Chrome</span> <span class="stack-tag">Microsoft Edge</span> <span class="stack-tag">Digital Forensics</span> </div> ` },
+
+      "inject-winhook": { id: "PRJ-08 · DLL INJECTION", title: "Inject_WinHook.dll", body: ` <p><strong>What it is.</strong> A Windows DLL injection module designed to inject <strong>WinHook64.dll</strong> into selected target processes for API monitoring and behavioral analysis. The injector uses process filtering rules and PID-based targeting to ensure hooks are deployed only where required.</p> <h4>Key Features</h4> <ul> <li>PID-based DLL injection workflow.</li> <li>Configurable target process filtering via INI file.</li> <li>Automatic process name validation before injection.</li> <li>Controlled deployment of WinHook64.dll.</li> <li>Injection failure logging and diagnostics.</li> <li>Designed for API monitoring and behavior tracking.</li> </ul> <h4>How it works</h4> <ul> <li>Receives a target process ID (PID).</li> <li>Resolves the associated process name.</li> <li>Reads process filtering rules from an INI configuration file.</li> <li>Verifies whether the process is authorized for monitoring.</li> <li>Injects WinHook64.dll into the target process.</li> <li>The injected DLL initializes API hooks automatically from DllMain.</li> <li>Logs injection failures and operational issues for troubleshooting.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ DLL implementation.</li> <li>PID-based process targeting.</li> <li>INI-driven configuration management.</li> <li>Windows DLL injection techniques.</li> <li>Integration with WinHook64.dll monitoring framework.</li> <li>Controlled process-level instrumentation.</li> </ul> <h4>Why I built it</h4> <p>I wanted to understand how monitoring agents deploy instrumentation into running processes and how API-hooking frameworks are activated in real-world environments. The project provided hands-on experience with process management, DLL injection workflows, configuration-driven targeting, and runtime monitoring deployment.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">DLL Injection</span> <span class="stack-tag">Windows Internals</span> <span class="stack-tag">Process Monitoring</span> <span class="stack-tag">API Hooking</span> </div> ` },
+
+      "findusers": { id: "PRJ-08 · USER ENUMERATION", title: "FINDUSERS.EXE", body: ` <p><strong>What it is.</strong> A Windows MFC-based user account inspection tool that retrieves and displays detailed local user account information using the Windows Networking API. The application presents account properties in a structured interface designed for administration, auditing, and security analysis.</p> <h4>Key Features</h4> <ul> <li>Local user account enumeration.</li> <li>Detailed account information retrieval using NetUserGetInfo (Level 3).</li> <li>Property-value based List Control interface.</li> <li>Readable date and time conversion.</li> <li>Safe handling of missing or unavailable values.</li> <li>Lightweight native Windows implementation.</li> </ul> <h4>Information Retrieved</h4> <ul> <li>Username and Full Name.</li> <li>Comments and Account Description.</li> <li>User RID and Primary Group ID.</li> <li>Account Active / Disabled Status.</li> <li>Account Type Information.</li> <li>Password Policies and Password Age.</li> <li>Bad Password Count.</li> <li>Last Logon Time.</li> <li>Account Expiration Details.</li> <li>Home Directory and Profile Path.</li> <li>Logon Script Information.</li> <li>Country Code and Localization Settings.</li> </ul> <h4>How it works</h4> <ul> <li>Enumerates available local users.</li> <li>Allows user selection through a dropdown control.</li> <li>Uses NetUserGetInfo(Level 3) to retrieve account attributes.</li> <li>Processes USER_INFO_3 data structures.</li> <li>Converts Windows timestamps into readable date/time format.</li> <li>Displays results in a structured two-column List Control.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>MFC-based Windows application.</li> <li>Windows Networking API integration.</li> <li>USER_INFO_3 structure parsing.</li> <li>NetApiBufferFree memory management.</li> <li>Robust null and error handling.</li> <li>Native Windows account inspection.</li> </ul> <h4>Why I built it</h4> <p>I wanted to explore Windows user account management APIs and understand how account attributes are stored and exposed through native Windows interfaces. The project provided practical experience with account enumeration, privilege-related information, Windows networking APIs, and administrative tooling development.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">MFC</span> <span class="stack-tag">Windows API</span> <span class="stack-tag">NetUserGetInfo</span> <span class="stack-tag">User Enumeration</span> <span class="stack-tag">System Administration</span> </div> ` },
+
+      "fileview": { id: "PRJ-09 · FILE FORENSICS", title: "FileView", body: ` <p><strong>What it is.</strong> A Windows MFC-based file analysis and forensic inspection tool that provides detailed information about files and folders, including metadata, cryptographic hashes, digital signature information, Windows Zone Identifier data, and file origin tracking. The application leverages a custom DLL (<strong>HashUtils.dll</strong>) to centralize file intelligence collection and analysis.</p> <h4>Key Features</h4> <ul> <li>Single-file and folder analysis modes.</li> <li>SHA-256 hash generation and integrity verification.</li> <li>Windows Zone Identifier (Mark-of-the-Web) analysis.</li> <li>Host URL and Referrer URL extraction.</li> <li>Digital signature inspection.</li> <li>Publisher and Company information extraction.</li> <li>Product Name and File Version analysis.</li> <li>File metadata and timestamp collection.</li> <li>Folder-wide file enumeration.</li> </ul> <h4>Information Retrieved</h4> <ul> <li>File Name</li> <li>Full File Path</li> <li>File Size</li> <li>Creation Date</li> <li>Last Modified Date</li> <li>Last Access Date</li> <li>SHA-256 Hash</li> <li>Zone ID</li> <li>Zone Name</li> <li>Host URL</li> <li>Referrer URL</li> <li>Digital Signature Status</li> <li>Publisher Name</li> <li>Company Name</li> <li>Product Name</li> <li>File Version</li> <li>Original Filename</li> <li>Description Information</li> </ul> <h4>How it works</h4> <ul> <li>User selects either File Mode or Folder Mode.</li> <li>Application calls GetFileInfo() from HashUtils.dll.</li> <li>Metadata, timestamps, and cryptographic hashes are collected.</li> <li>Zone.Identifier alternate data streams are parsed.</li> <li>Version resources are extracted from PE files.</li> <li>Digital signature and publisher information are analyzed.</li> <li>Results are displayed in a structured forensic view.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ and MFC-based desktop application.</li> <li>Custom HashUtils.dll integration.</li> <li>SHA-256 file hashing.</li> <li>Windows ADS (Zone.Identifier) parsing.</li> <li>PE Version Resource analysis.</li> <li>Digital signature inspection.</li> <li>Folder-wide file enumeration.</li> <li>Native Win32 API implementation.</li> </ul> <h4>Why I built it</h4> <p>I wanted to create a practical forensic utility capable of analyzing file integrity, origin, trust information, and metadata from a single interface. The project provided hands-on experience with Windows file internals, Alternate Data Streams, digital signatures, PE metadata, hashing algorithms, and forensic investigation workflows.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">MFC</span> <span class="stack-tag">Win32 API</span> <span class="stack-tag">SHA-256</span> <span class="stack-tag">Digital Signatures</span> <span class="stack-tag">File Forensics</span> <span class="stack-tag">PE Analysis</span> </div> ` },
+
+      "sysinfo-dll": { id: "PRJ-10 · SYSTEM INVENTORY", title: "System Information Utility DLL", body: ` <p><strong>What it is.</strong> A native Windows DLL that collects hardware and software inventory information from the local system and exports the data in a structured INI format. The library is designed with reusable modular APIs, allowing applications to retrieve only the required information without performing unnecessary system queries.</p> <h4>Key Features</h4> <ul> <li>Modular export-based architecture.</li> <li>Hardware inventory collection.</li> <li>Operating system and software information retrieval.</li> <li>Disk and storage analysis.</li> <li>INI-based output generation.</li> <li>Reusable API design for multiple applications.</li> <li>Lightweight native Windows implementation.</li> </ul> <h4>Information Collected</h4> <ul> <li>Operating System Name.</li> <li>OS Version and Build Number.</li> <li>System Architecture (x64).</li> <li>System Uptime.</li> <li>CPU Architecture and Core Count.</li> <li>Total Physical Memory.</li> <li>Disk Inventory (SSD / HDD).</li> <li>Total, Used, and Available Storage.</li> <li>System Manufacturer.</li> <li>System Model Information.</li> </ul> <h4>How it works</h4> <ul> <li>Applications call exported DLL functions.</li> <li>Requested hardware or software information is collected using Win32 APIs.</li> <li>Data is organized into logical categories.</li> <li>Results are written into a structured INI file.</li> <li>Callers may request full system inventory or individual data categories.</li> <li>Designed for seamless integration with services, agents, and desktop applications.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ native DLL implementation.</li> <li>Win32 API based system information collection.</li> <li>MFC and Win32 compatible exports.</li> <li>Structured INI generation.</li> <li>Disk classification (SSD/HDD).</li> <li>Reusable component-based architecture.</li> <li>64-bit Windows support.</li> </ul> <h4>Why I built it</h4> <p>I wanted a reusable system inventory component that could be integrated into multiple applications, services, and security tools. The project provided practical experience with Windows hardware enumeration, OS information gathering, storage analysis, API design, and reusable DLL development.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">DLL</span> <span class="stack-tag">Win32 API</span> <span class="stack-tag">System Inventory</span> <span class="stack-tag">Hardware Enumeration</span> <span class="stack-tag">INI</span> </div> ` },
+
+      "winauditmgr": { id: "PRJ-11 · WINDOWS AUDITING", title: "WinAuditMgr.dll", body: ` <p><strong>What it is.</strong> A native Windows auditing management and event parsing library that enables applications to configure Windows audit policies and convert raw Windows Event XML into structured C++ data structures. The DLL simplifies audit configuration, event collection, and event normalization for monitoring, compliance, and security solutions.</p> <h4>Key Features</h4> <ul> <li>Enable or disable Windows audit subcategories programmatically.</li> <li>Configure Success, Failure, or Success+Failure auditing.</li> <li>Parse raw Windows Event XML data.</li> <li>Extract common system-level event information.</li> <li>Extract event-specific fields into strongly typed structures.</li> <li>Reusable architecture for supporting additional Event IDs.</li> <li>Designed for monitoring, auditing, and compliance solutions.</li> </ul> <h4>Core Components</h4> <ul> <li><strong>SetAudit()</strong> – Configures Windows audit policy subcategories.</li> <li><strong>ParseEventXml()</strong> – Parses Windows Event XML and maps fields into C++ structures.</li> <li><strong>SYSTEM_TAG</strong> – Common system-level event metadata container.</li> <li><strong>EVENT_XXXX Structures</strong> – Event-specific structures for individual Event IDs.</li> </ul> <h4>How it works</h4> <ul> <li>Applications configure auditing using SetAudit().</li> <li>Windows generates audit events through the Security Event Log.</li> <li>Raw XML event data is passed to ParseEventXml().</li> <li>Common event metadata is extracted into SYSTEM_TAG.</li> <li>Event-specific fields are mapped into dedicated structures such as EVENT_4688.</li> <li>Applications consume structured event data without manually parsing XML.</li> </ul> <h4>Supported Event Data</h4> <ul> <li>Provider Information.</li> <li>Event ID and Version.</li> <li>Level, Task, Opcode, and Keywords.</li> <li>Event Record ID.</li> <li>Channel and Computer Name.</li> <li>Execution Process and Thread IDs.</li> <li>Correlation Activity IDs.</li> <li>UTC and Local Event Timestamps.</li> <li>Event-specific fields such as Process Creation (4688).</li> </ul> <h4>Technical Highlights</h4> <ul> <li>Native C++ DLL implementation.</li> <li>Windows Security Auditing integration.</li> <li>XML event parsing engine.</li> <li>Structured event normalization.</li> <li>Extensible Event ID support model.</li> <li>Reusable exported API design.</li> <li>MFC and Win32 compatible.</li> </ul> <h4>Why I built it</h4> <p>I wanted a reusable component that could simplify Windows auditing and event log processing for security tools. The project provided hands-on experience with Windows Security Events, XML parsing, audit policy configuration, event normalization, and the foundations used by SIEM, EDR, and monitoring platforms.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">Windows Auditing</span> <span class="stack-tag">Event Logs</span> <span class="stack-tag">XML Parsing</span> <span class="stack-tag">Security Monitoring</span> <span class="stack-tag">Event Normalization</span> </div> ` },
+
+      "pcconsol": { id: "PRJ-12 · PARENTAL CONTROL UI", title: "PCConsol.exe", body: ` <p><strong>What it is.</strong> A Windows MFC-based management console for configuring and controlling parental control policies. The application works alongside <strong>PCConsolSvc.exe</strong>, allowing administrators or parents to manage URL filtering, category restrictions, keyword-based blocking, and exception lists through a centralized graphical interface.</p> <h4>Key Features</h4> <ul> <li>Keyword-based website filtering.</li> <li>Category-based content restrictions.</li> <li>Custom URL exclusion management.</li> <li>Secure configuration storage.</li> <li>Automatic service synchronization.</li> <li>Real-time policy application.</li> <li>User-friendly MFC interface.</li> </ul> <h4>How it works</h4> <ul> <li>Users configure filtering policies through the UI.</li> <li>Website categories are loaded from a SQLite database.</li> <li>Selected restrictions and exceptions are saved to configuration files.</li> <li>Configuration data is encrypted using an XOR-based mechanism.</li> <li>On Apply, updated settings are written securely to disk.</li> <li>The application automatically restarts <strong>PCConsolSvc.exe</strong> using Windows Service APIs.</li> <li>The service reloads the latest policy and immediately enforces the new rules.</li> </ul> <h4>Policy Controls</h4> <ul> <li>Allow All mode.</li> <li>Block All mode.</li> <li>Keyword-based URL filtering.</li> <li>Category-based website blocking.</li> <li>Custom URL allow-list support.</li> <li>Dynamic policy updates without system reboot.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ and MFC desktop application.</li> <li>SQLite database integration.</li> <li>INI-based configuration management.</li> <li>XOR-based configuration encryption.</li> <li>Windows Service Control Manager (SCM) integration.</li> <li>Multi-threaded UI initialization.</li> <li>Real-time service configuration updates.</li> </ul> <h4>Why I built it</h4> <p>I wanted to build the management layer for a complete parental control platform. While PCConsolSvc.exe handles low-level network filtering and policy enforcement, PCConsol.exe provides an intuitive interface for managing rules, categories, and exceptions while ensuring policies are securely stored and immediately applied.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">MFC</span> <span class="stack-tag">SQLite</span> <span class="stack-tag">Windows Services</span> <span class="stack-tag">Parental Control</span> <span class="stack-tag">Policy Management</span> </div> ` },
+
+      "appblocker": { id: "PRJ-13 · APPLICATION CONTROL", title: "AppBlocker.exe", body: ` <p><strong>What it is.</strong> A Windows MFC-based application control tool that uses the <strong>Image File Execution Options (IFEO)</strong> registry mechanism to block or unblock executable files at the operating system level. The application provides centralized management, auditing, and execution control without requiring background services or kernel drivers.</p> <h4>Key Features</h4> <ul> <li>Registry-based executable blocking.</li> <li>Application unblocking and restoration.</li> <li>Activity logging and audit history.</li> <li>Windows-native MFC user interface.</li> <li>System-level execution control.</li> <li>No background service dependency.</li> <li>Instant policy enforcement without reboot.</li> </ul> <h4>How it works</h4> <ul> <li>Users select executables through the application interface.</li> <li>The tool creates entries under Windows <strong>Image File Execution Options (IFEO)</strong>.</li> <li>A debugger redirection value is configured to prevent process execution.</li> <li>Windows checks the IFEO configuration whenever the executable is launched.</li> <li>Blocked applications are prevented from starting regardless of launch method.</li> <li>Removing the IFEO entry immediately restores normal execution.</li> </ul> <h4>Audit & Monitoring</h4> <ul> <li>Timestamped activity logging.</li> <li>Executable name tracking.</li> <li>User account tracking.</li> <li>Block and Unblock action history.</li> <li>Administrative audit trail generation.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ and MFC desktop application.</li> <li>Windows Registry manipulation.</li> <li>Image File Execution Options (IFEO) integration.</li> <li>Administrative privilege management.</li> <li>Structured audit logging.</li> <li>Windows-native implementation.</li> <li>No external dependencies.</li> </ul> <h4>Use Cases</h4> <ul> <li>Enterprise workstation lockdown.</li> <li>School and laboratory environments.</li> <li>Kiosk-mode enforcement.</li> <li>Software restriction policies.</li> <li>Administrative application control.</li> <li>Endpoint hardening.</li> </ul> <h4>Why I built it</h4> <p>I wanted to explore Windows application execution controls and understand how operating system mechanisms can be leveraged to enforce software restrictions. The project provided hands-on experience with Windows Registry internals, IFEO-based process control, administrative tooling, and endpoint security concepts.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">MFC</span> <span class="stack-tag">Windows Registry</span> <span class="stack-tag">IFEO</span> <span class="stack-tag">Application Control</span> <span class="stack-tag">Endpoint Security</span> </div> ` },
+
+      "cryptocore": { id: "PRJ-14 · CRYPTOGRAPHY & SECURE STORAGE", title: "CryptoCore DLL", body: ` <p><strong>What it is.</strong> A reusable Windows cryptography and secure storage library designed to protect configuration data, application logs, and text files. The DLL provides encrypted INI management, secure logging, and file encryption capabilities through a simple API while abstracting memory management and file handling from consuming applications.</p> <h4>Key Features</h4> <ul> <li>Encrypted configuration storage.</li> <li>Secure string and integer management.</li> <li>ANSI and Unicode API support.</li> <li>Encrypted timestamped logging.</li> <li>Text file encryption and decryption.</li> <li>Automatic output file generation.</li> <li>Internal memory management for safety.</li> </ul> <h4>Core Capabilities</h4> <ul> <li>Write and read encrypted configuration values.</li> <li>Store encrypted strings and integers in INI files.</li> <li>Generate encrypted audit and activity logs.</li> <li>Encrypt entire text files line-by-line.</li> <li>Decrypt protected files back into readable format.</li> <li>Support both ANSI (char*) and Unicode (wchar_t*) applications.</li> <li>Return generated output paths without exposing internal buffers.</li> </ul> <h4>How it works</h4> <ul> <li>Applications call exported CryptoCore APIs.</li> <li>Data is processed using XOR and Hex-based encoding mechanisms.</li> <li>Configuration values are stored in encrypted form.</li> <li>Logs are timestamped and protected before writing to disk.</li> <li>Text files are encrypted or decrypted line-by-line.</li> <li>Generated files are automatically named using _enc.txt and _dec.txt conventions.</li> <li>Memory allocation and cleanup are handled internally by the DLL.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>Native C++ DLL implementation.</li> <li>ANSI and Unicode API exports.</li> <li>XOR + Hex encoding workflow.</li> <li>Encrypted INI configuration management.</li> <li>Secure log generation.</li> <li>File encryption and decryption engine.</li> <li>Reusable API design.</li> <li>MFC and Win32 compatible.</li> </ul> <h4>Why I built it</h4> <p>I wanted a reusable security component that could be integrated into multiple desktop applications and services to protect sensitive configuration data, logs, and operational files. The project provided hands-on experience with data protection, API design, Unicode handling, secure file processing, and reusable Windows DLL development.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">DLL</span> <span class="stack-tag">Cryptography</span> <span class="stack-tag">Secure Storage</span> <span class="stack-tag">File Encryption</span> <span class="stack-tag">Windows Security</span> </div> ` },
+
+      "netutils": { id: "PRJ-15 · NETWORK UTILITIES", title: "NetUtils DLL", body: ` <p><strong>What it is.</strong> A lightweight Windows networking utility library that provides internet connectivity validation, real-time bandwidth measurement, and local IPv4 discovery. Designed for desktop applications, services, installers, and diagnostic tools, the DLL exposes simple APIs that can be integrated into Win32 and MFC applications.</p> <h4>Key Features</h4> <ul> <li>Real internet speed verification.</li> <li>Minimum bandwidth requirement validation.</li> <li>Local IPv4 address retrieval.</li> <li>High-precision throughput measurement.</li> <li>WinHTTP-based network operations.</li> <li>Robust error handling and cleanup.</li> <li>Easy integration through exported APIs.</li> </ul> <h4>Core APIs</h4> <ul> <li><strong>CheckInternet()</strong> – Verifies internet connectivity and measures download speed.</li> <li><strong>GetLocalIPv4()</strong> – Retrieves the system's local IPv4 address.</li> </ul> <h4>How it works</h4> <ul> <li>Downloads test data using WinHTTP from a high-speed public endpoint.</li> <li>Measures transfer duration using QueryPerformanceCounter.</li> <li>Calculates actual throughput in Mbps.</li> <li>Compares measured bandwidth against application requirements.</li> <li>Returns success only when the required speed threshold is met.</li> <li>Enumerates network adapters to retrieve a valid local IPv4 address.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ native DLL implementation.</li> <li>WinHTTP networking APIs.</li> <li>High-resolution performance counters.</li> <li>64 KB optimized download buffers.</li> <li>IPv4 network adapter enumeration.</li> <li>Graceful timeout and connection failure handling.</li> <li>Win32 and MFC compatibility.</li> </ul> <h4>Included Tools</h4> <ul> <li>Dynamic loader/test application.</li> <li>Runtime DLL loading via LoadLibrary().</li> <li>Internet speed validation testing.</li> <li>IPv4 retrieval verification.</li> <li>Integration demonstration examples.</li> </ul> <h4>Use Cases</h4> <ul> <li>Installer prerequisite validation.</li> <li>Network diagnostics utilities.</li> <li>Endpoint health monitoring.</li> <li>Connectivity verification before updates.</li> <li>Background services requiring bandwidth checks.</li> <li>System administration and troubleshooting tools.</li> </ul> <h4>Why I built it</h4> <p>I wanted a reusable networking component that could provide accurate internet connectivity checks and bandwidth validation instead of relying on simple ping tests. The project provided hands-on experience with WinHTTP, performance measurement, network adapter enumeration, and reusable Windows DLL development.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">DLL</span> <span class="stack-tag">WinHTTP</span> <span class="stack-tag">Networking</span> <span class="stack-tag">Bandwidth Testing</span> <span class="stack-tag">IPv4</span> </div> ` },
+
+      "mtfixersvc": { id: "PRJ-16 · SYSTEM MAINTENANCE SERVICE", title: "MTFixerSvc", body: ` <p><strong>What it is.</strong> A multithreaded Windows service designed to automate system maintenance, process management, scheduled task validation, and database repair operations. The service continuously monitors the system and performs self-healing actions to ensure critical maintenance routines remain operational.</p> <h4>Key Features</h4> <ul> <li>Automated repair and maintenance execution.</li> <li>Windows Task Scheduler integration.</li> <li>Self-healing scheduled task management.</li> <li>Multithreaded monitoring architecture.</li> <li>Database maintenance and repair workflows.</li> <li>Process and shell execution automation.</li> <li>Comprehensive activity logging.</li> </ul> <h4>How it works</h4> <ul> <li>Starts automatically as a Windows service.</li> <li>Creates dedicated worker threads for maintenance operations.</li> <li>Continuously verifies the existence of required scheduled tasks.</li> <li>Automatically recreates missing or corrupted tasks.</li> <li>Executes repair routines through integrated DLL modules.</li> <li>Launches maintenance processes and shell commands when required.</li> <li>Records all operations for auditing and troubleshooting.</li> </ul> <h4>Monitoring & Self-Healing</h4> <ul> <li>Scheduled task verification.</li> <li>Automatic task recreation.</li> <li>Database consistency checks.</li> <li>Process monitoring and recovery.</li> <li>Background maintenance execution.</li> <li>Continuous health validation.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ Windows Service implementation.</li> <li>Multithreaded worker architecture.</li> <li>Windows Task Scheduler integration.</li> <li>DLL-based modular repair framework.</li> <li>Process and shell automation.</li> <li>Structured logging and diagnostics.</li> <li>24/7 background operation.</li> <li>Minimal resource footprint.</li> </ul> <h4>Use Cases</h4> <ul> <li>Automated system maintenance.</li> <li>Database repair and recovery.</li> <li>Application self-healing mechanisms.</li> <li>Endpoint health monitoring.</li> <li>Scheduled operational task management.</li> <li>Enterprise support and maintenance tools.</li> </ul> <h4>Why I built it</h4> <p>I wanted a reliable background service capable of automatically detecting and repairing operational issues without user intervention. The project provided hands-on experience with Windows Services, multithreading, scheduled task management, process automation, self-healing architectures, and long-running system maintenance workflows.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">Windows Service</span> <span class="stack-tag">Multithreading</span> <span class="stack-tag">Task Scheduler</span> <span class="stack-tag">Self-Healing</span> <span class="stack-tag">System Maintenance</span> </div> ` },
+
+      "pconsolsvc-dll": { id: "PRJ-17 · URL FILTERING ENGINE", title: "PConsolSvc.dll", body: ` <p><strong>What it is.</strong> A high-performance URL filtering and policy enforcement engine used by <strong>PConsolSvc.exe</strong>. The DLL integrates with the NetFilter SDK to inspect network traffic in real time, classify URLs, and apply parental control policies based on categories, keywords, exclusions, and global filtering modes.</p> <h4>Key Features</h4> <ul> <li>Real-time URL inspection and filtering.</li> <li>Encrypted configuration loading.</li> <li>Category-based policy enforcement.</li> <li>Keyword-based URL detection.</li> <li>MD5-powered lookup cache.</li> <li>Allow-All and Block-All policy modes.</li> <li>Database-backed URL classification.</li> </ul> <h4>Core Exports</h4> <ul> <li><strong>LoadDB()</strong> – Loads databases, decrypts settings, categories, exclusions, and filtering policies.</li> <li><strong>CheckURL()</strong> – Evaluates URLs against keywords, cache, database lookups, and policy rules.</li> <li><strong>CloseAll()</strong> – Releases databases, caches, and allocated resources.</li> </ul> <h4>How it works</h4> <ul> <li>Loads encrypted parental control settings during initialization.</li> <li>Opens the main URL classification database in read-only mode.</li> <li>Loads a local cache database for accelerated lookups.</li> <li>Receives URLs intercepted by NetFilter SDK through PConsolSvc.exe.</li> <li>Checks keyword-based rules and exclusion lists.</li> <li>Performs MD5-based cache lookups for known URLs.</li> <li>If cache misses occur, queries the main URL database.</li> <li>Applies Allow-All or Block-All policy logic.</li> <li>Returns ALLOW or BLOCK decisions back to the service.</li> </ul> <h4>Performance Optimizations</h4> <ul> <li>MD5-based URL caching.</li> <li>Read-only database access.</li> <li>In-memory category storage.</li> <li>Fast exclusion matching.</li> <li>Reduced database query overhead.</li> <li>Efficient URL preprocessing and normalization.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ native DLL implementation.</li> <li>NetFilter SDK integration.</li> <li>SQLite database access.</li> <li>Encrypted configuration processing.</li> <li>MD5 cache engine.</li> <li>Real-time network filtering.</li> <li>Resource-safe cleanup architecture.</li> <li>High-performance policy evaluation.</li> </ul> <h4>Why I built it</h4> <p>I wanted to separate filtering logic from the service layer and create a reusable URL classification engine capable of making high-speed policy decisions. The project provided practical experience with network filtering, caching strategies, encrypted configuration handling, database optimization, and real-time traffic inspection.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">DLL</span> <span class="stack-tag">NetFilter SDK</span> <span class="stack-tag">SQLite</span> <span class="stack-tag">URL Filtering</span> <span class="stack-tag">Network Security</span> </div> ` },
+
+      "cmscanner": { id: "PRJ-18 · MALWARE SCANNING ENGINE", title: "CMScanner.dll", body: ` <p><strong>What it is.</strong> A reusable malware scanning framework built on top of the ClamAV engine. The DLL exposes a lightweight API for loading multiple scanning engines, managing custom signature databases, and performing file or memory-based malware detection within Windows applications.</p> <h4>Key Features</h4> <ul> <li>Multi-engine malware scanning architecture.</li> <li>Support for multiple signature databases.</li> <li>File-based malware detection.</li> <li>Memory and buffer scanning.</li> <li>Custom ClamAV-compatible signatures.</li> <li>Quick scan optimization mode.</li> <li>Dynamic engine loading and unloading.</li> </ul> <h4>Core APIs</h4> <ul> <li><strong>LoadScanEngine()</strong> – Creates a scanning engine using a specified signature database.</li> <li><strong>UnloadEngine()</strong> – Releases engine resources and unloads signatures.</li> <li><strong>ScanFileEx()</strong> – Scans files directly from disk.</li> <li><strong>ScanBufferEx()</strong> – Scans raw memory buffers and in-memory content.</li> </ul> <h4>How it works</h4> <ul> <li>Loads ClamAV-compatible signature databases at runtime.</li> <li>Creates isolated scanning engine instances.</li> <li>Supports both full ClamAV databases and custom lightweight databases.</li> <li>Performs malware detection against loaded signatures.</li> <li>Returns detection status and matched malware names.</li> <li>Allows engines to be unloaded dynamically to free resources.</li> </ul> <h4>Scanning Capabilities</h4> <ul> <li>File scanning from local storage.</li> <li>Raw memory buffer scanning.</li> <li>Custom signature validation.</li> <li>Multiple database support.</li> <li>Quick scan performance mode.</li> <li>Runtime engine management.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ native DLL implementation.</li> <li>ClamAV engine integration.</li> <li>Dynamic signature database loading.</li> <li>Multi-engine architecture.</li> <li>Memory-safe resource management.</li> <li>Custom malware signature support.</li> <li>File and memory inspection APIs.</li> <li>MFC and Win32 compatible.</li> </ul> <h4>Use Cases</h4> <ul> <li>Endpoint protection solutions.</li> <li>Malware analysis utilities.</li> <li>Secure file upload validation.</li> <li>Network content inspection.</li> <li>Threat research and testing.</li> <li>Custom security products.</li> </ul> <h4>Why I built it</h4> <p>I wanted to understand how malware scanning engines work internally and create a reusable scanning component that could be embedded into different security tools. The project provided practical experience with antivirus engines, signature-based detection, memory scanning, dynamic module management, and custom malware signature development.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">DLL</span> <span class="stack-tag">ClamAV</span> <span class="stack-tag">Malware Analysis</span> <span class="stack-tag">Threat Detection</span> <span class="stack-tag">Security Engineering</span> </div> ` },
+
+      "gendb": { id: "PRJ-19 · THREAT INTELLIGENCE PLATFORM", title: "GenDB.exe", body: ` <p><strong>What it is.</strong> A standalone URL Intelligence Database Generator that collects threat intelligence feeds, validates URLs, classifies active resources, generates MD5 fingerprints, and produces optimized databases for high-speed URL filtering and security products.</p> <h4>Key Features</h4> <ul> <li>Automated threat feed downloading.</li> <li>URL parsing and normalization.</li> <li>HTTP response validation.</li> <li>Response-code classification.</li> <li>MD5-based URL fingerprint generation.</li> <li>Category-based database creation.</li> <li>Integration-ready output databases.</li> </ul> <h4>Processing Pipeline</h4> <ul> <li>Download intelligence feeds from external sources.</li> <li>Extract and normalize URLs.</li> <li>Remove duplicates and invalid entries.</li> <li>Validate URLs through HTTP response checks.</li> <li>Separate URLs by response status.</li> <li>Process active URLs only.</li> <li>Generate MD5 fingerprints.</li> <li>Build optimized category databases.</li> </ul> <h4>Classification Engine</h4> <ul> <li>200 – Active URLs.</li> <li>403 – Forbidden resources.</li> <li>404 – Not Found resources.</li> <li>0 – Unreachable or failed connections.</li> <li>Only active URLs are included in final databases.</li> </ul> <h4>Supported Categories</h4> <ul> <li>Phishing URLs.</li> <li>Malware distribution sites.</li> <li>Adult content domains.</li> <li>Social media platforms.</li> <li>Custom threat intelligence feeds.</li> <li>User-defined security categories.</li> </ul> <h4>Database Generation</h4> <ul> <li>Creates MD5-based lookup databases.</li> <li>Reduces storage requirements.</li> <li>Optimized for high-speed matching.</li> <li>Generates category-specific datasets.</li> <li>Produces integration-ready output files.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>MFC desktop application.</li> <li>Large-scale URL processing.</li> <li>HTTP validation engine.</li> <li>Threat intelligence feed ingestion.</li> <li>MD5 hashing and indexing.</li> <li>Database generation workflow.</li> <li>Scalable category architecture.</li> <li>Security-focused design.</li> </ul> <h4>Use Cases</h4> <ul> <li>Parental control solutions.</li> <li>Web filtering platforms.</li> <li>Secure web gateways.</li> <li>Endpoint protection products.</li> <li>Proxy and firewall integrations.</li> <li>Threat intelligence pipelines.</li> </ul> <h4>Why I built it</h4> <p>I wanted to understand how URL intelligence databases are created and maintained behind modern filtering products. The project provided hands-on experience with threat intelligence processing, large-scale URL validation, feed normalization, database generation, and high-performance lookup optimization.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">MFC</span> <span class="stack-tag">Threat Intelligence</span> <span class="stack-tag">URL Classification</span> <span class="stack-tag">MD5</span> <span class="stack-tag">Security</span> </div> ` },
+
+      "useractivitymonitor": { id: "PRJ-20 · USER ACTIVITY MONITORING", title: "UserActivityMonitor.exe", body: ` <p><strong>What it is.</strong> A lightweight Windows monitoring platform designed to capture user activity through clipboard tracking, idle-time analysis, and periodic screenshot collection. Built with a modular thread-based architecture, the application provides structured telemetry suitable for auditing, monitoring, and behavioral analysis scenarios.</p> <h4>Key Features</h4> <ul> <li>Real-time clipboard monitoring.</li> <li>User idle-time detection and reporting.</li> <li>Automated screenshot collection.</li> <li>Configuration-driven execution.</li> <li>Thread-based monitoring architecture.</li> <li>Structured logging formats.</li> <li>UTF-8 and Unicode support.</li> </ul> <h4>Monitoring Modules</h4> <ul> <li><strong>Clipboard Monitoring</strong> – Captures clipboard text changes and stores entries in JSON (NDJSON) format.</li> <li><strong>Idle Detection</strong> – Measures user inactivity and records idle duration with timestamps.</li> <li><strong>Screenshot Capture</strong> – Collects screenshots at configurable intervals for activity visibility.</li> </ul> <h4>How it works</h4> <ul> <li>Loads monitoring configuration from settings files.</li> <li>Creates dedicated worker threads for each monitoring component.</li> <li>Registers clipboard listeners to detect content changes.</li> <li>Monitors system idle duration using Windows APIs.</li> <li>Captures screenshots at administrator-defined intervals.</li> <li>Stores collected telemetry in structured log formats.</li> <li>Runs continuously with minimal system overhead.</li> </ul> <h4>Logging & Output</h4> <ul> <li>Clipboard logs stored in NDJSON format.</li> <li>Idle activity logs stored in CSV format.</li> <li>UTF-8 encoded output.</li> <li>Timestamped activity records.</li> <li>User-based activity tracking.</li> <li>Structured data suitable for SIEM ingestion.</li> </ul> <h4>Technical Highlights</h4> <ul> <li>C++ and MFC implementation.</li> <li>Multithreaded monitoring architecture.</li> <li>Clipboard listener integration.</li> <li>Windows idle-time APIs.</li> <li>Background screenshot capture engine.</li> <li>Configuration-driven execution.</li> <li>Long-running process stability.</li> <li>Extensible monitoring framework.</li> </ul> <h4>Use Cases</h4> <ul> <li>User activity auditing.</li> <li>Endpoint monitoring.</li> <li>Administrative oversight.</li> <li>Security investigations.</li> <li>Behavioral analysis.</li> <li>Operational monitoring.</li> </ul> <h4>Why I built it</h4> <p>I wanted to explore user activity telemetry collection and build a modular monitoring platform capable of capturing multiple behavioral signals. The project provided practical experience with Windows messaging, thread synchronization, clipboard monitoring, idle detection, screenshot automation, structured logging, and long-running monitoring applications.</p> <div class="modal-tags"> <span class="stack-tag">C++</span> <span class="stack-tag">MFC</span> <span class="stack-tag">Monitoring</span> <span class="stack-tag">Clipboard</span> <span class="stack-tag">Screenshots</span> <span class="stack-tag">Telemetry</span> </div> ` },
+
+      "screenpulse": {
+        id: "PRJ-21 · SCREEN CAPTURE LIBRARY",
+        title: "ScreenPulse.dll",
+        body: `
+    <p><strong>What it is.</strong> A lightweight Windows DLL that captures full-screen screenshots on demand and stores them as PNG images. Designed as a reusable component for monitoring, auditing, reporting, and desktop utility applications.</p>
+
+    <h4>Key Features</h4>
+    <ul>
+      <li>Full-screen capture functionality.</li>
+      <li>Multi-monitor virtual desktop support.</li>
+      <li>PNG image generation.</li>
+      <li>Timestamp-based file naming.</li>
+      <li>Host process identification in output files.</li>
+      <li>Single API design for easy integration.</li>
+      <li>Stateless operation with minimal overhead.</li>
+    </ul>
+
+    <h4>Core API</h4>
+    <ul>
+      <li><strong>CaptureScreenToPath()</strong> – Captures the current virtual desktop and saves the screenshot as a PNG image in the specified folder.</li>
+    </ul>
+
+    <h4>How it works</h4>
+    <ul>
+      <li>Receives a destination folder path from the host application.</li>
+      <li>Captures the complete virtual desktop across all connected monitors.</li>
+      <li>Creates a bitmap of the current screen contents.</li>
+      <li>Uses GDI+ image encoders to generate PNG output.</li>
+      <li>Builds a timestamped filename containing the host process name.</li>
+      <li>Saves the image and returns execution status to the caller.</li>
+    </ul>
+
+    <h4>Technical Highlights</h4>
+    <ul>
+      <li>Native C++ DLL implementation.</li>
+      <li>Windows GDI+ integration.</li>
+      <li>Multi-monitor support.</li>
+      <li>PNG image encoding.</li>
+      <li>Unicode compatible APIs.</li>
+      <li>Stateless architecture.</li>
+      <li>No background services or threads.</li>
+      <li>Low memory footprint.</li>
+    </ul>
+
+    <h4>Use Cases</h4>
+    <ul>
+      <li>Monitoring applications.</li>
+      <li>Activity auditing solutions.</li>
+      <li>Incident investigation tools.</li>
+      <li>Desktop automation utilities.</li>
+      <li>Reporting and diagnostics platforms.</li>
+      <li>Endpoint visibility solutions.</li>
+    </ul>
+
+    <h4>Why I built it</h4>
+    <p>I wanted a reusable screenshot capture component that could be integrated into different monitoring and desktop applications. The project provided practical experience with Windows graphics APIs, GDI+, image encoding, screen capture techniques, and DLL-based software design.</p>
+
+    <div class="modal-tags">
+      <span class="stack-tag">C++</span>
+      <span class="stack-tag">DLL</span>
+      <span class="stack-tag">GDI+</span>
+      <span class="stack-tag">PNG</span>
+      <span class="stack-tag">Screen Capture</span>
+      <span class="stack-tag">Win32</span>
+    </div>
+  `
+      },
+
+      "installer": {
+        id: "PRJ-22 · INSTALLATION FRAMEWORK",
+        title: "Product Installer",
+        body: `
+    <p><strong>What it is.</strong> A custom-built Windows installation framework developed entirely in MFC. The installer handles application deployment, dependency installation, directory creation, binary extraction, and installation validation without relying on third-party installer technologies.</p>
+
+    <h4>Key Features</h4>
+    <ul>
+      <li>Automated product installation workflow.</li>
+      <li>Directory structure creation.</li>
+      <li>Binary extraction and deployment.</li>
+      <li>Dependency installation and validation.</li>
+      <li>Safe file replacement and upgrade handling.</li>
+      <li>Installation logging and error reporting.</li>
+      <li>Re-installation and recovery support.</li>
+    </ul>
+
+    <h4>Installation Workflow</h4>
+    <ul>
+      <li>Validate installation environment.</li>
+      <li>Create required folder structure.</li>
+      <li>Extract application binaries.</li>
+      <li>Deploy DLLs, EXEs, and supporting files.</li>
+      <li>Install required dependencies.</li>
+      <li>Verify successful deployment.</li>
+      <li>Generate installation logs.</li>
+    </ul>
+
+    <h4>Core Capabilities</h4>
+    <ul>
+      <li>Automatic folder creation.</li>
+      <li>BIN module deployment.</li>
+      <li>Dependency management.</li>
+      <li>File overwrite protection.</li>
+      <li>Installation validation checks.</li>
+      <li>Recovery from interrupted installations.</li>
+      <li>Safe upgrade support.</li>
+    </ul>
+
+    <h4>Technical Highlights</h4>
+    <ul>
+      <li>100% native MFC implementation.</li>
+      <li>No third-party installer frameworks.</li>
+      <li>Custom deployment engine.</li>
+      <li>Robust file management logic.</li>
+      <li>Installation state validation.</li>
+      <li>Detailed error handling.</li>
+      <li>Logging and troubleshooting support.</li>
+      <li>Updater integration ready.</li>
+    </ul>
+
+    <h4>Use Cases</h4>
+    <ul>
+      <li>Enterprise software deployment.</li>
+      <li>Security product installation.</li>
+      <li>Custom Windows application distribution.</li>
+      <li>Automated product setup.</li>
+      <li>Dependency-controlled deployments.</li>
+    </ul>
+
+    <h4>Why I built it</h4>
+    <p>I wanted complete control over the installation process instead of relying on third-party installer solutions. Building the installer provided practical experience with deployment workflows, dependency management, file system operations, installation validation, recovery mechanisms, and Windows application lifecycle management.</p>
+
+    <div class="modal-tags">
+      <span class="stack-tag">C++</span>
+      <span class="stack-tag">MFC</span>
+      <span class="stack-tag">Installer</span>
+      <span class="stack-tag">Deployment</span>
+      <span class="stack-tag">Windows</span>
+      <span class="stack-tag">System Programming</span>
+    </div>
+  `
+      },
+
+    };
+
+    // open project detail modal
+    function openModal(key) {
+      const p = projects[key]; if (!p) return;
+      document.getElementById('modal-id').textContent = p.id;
+      document.getElementById('modal-title').textContent = p.title;
+      document.getElementById('modal-body').innerHTML = p.body;
+      document.getElementById('modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    // close project modal
+    function closeModal() {
+      document.getElementById('modal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    // open certificates modal
+    function openCerts() {
+      document.getElementById('cert-modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    // close certificates modal
+    function closeCerts() {
+      document.getElementById('cert-modal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    // education certificate sets per qualification
+    const eduCerts = {
+      mca: {
+        title: "MCA — Certificates", items: [
+          { label: "Semester 1 Marksheet", file: "assets/certs/mca-sem1.jpg" },
+          { label: "Semester 2 Marksheet", file: "assets/certs/mca-sem2.jpg" },
+          { label: "Semester 3 Marksheet", file: "assets/certs/mca-sem3.jpg" },
+          { label: "Semester 4 Marksheet", file: "assets/certs/mca-sem4.jpg" },
+          { label: "MCA Degree", file: "assets/certs/mca-degree.jpg" }
+        ]
+      },
+      bca: {
+        title: "BCA — Certificates", items: [
+          { label: "Semester 1 Marksheet", file: "assets/certs/bca-sem1.jpg" },
+          { label: "Semester 2 Marksheet", file: "assets/certs/bca-sem2.jpg" },
+          { label: "Semester 3 Marksheet", file: "assets/certs/bca-sem3.jpg" },
+          { label: "Semester 4 Marksheet", file: "assets/certs/bca-sem4.jpg" },
+          { label: "Semester 5 Marksheet", file: "assets/certs/bca-sem5.jpg" },
+          { label: "Semester 6 Marksheet", file: "assets/certs/bca-sem6.jpg" },
+          { label: "BCA Degree", file: "assets/certs/bca-degree.jpg" }
+        ]
+      },
+      hsc: {
+        title: "HSC — Certificate", items: [
+          { label: "HSC Marksheet", file: "assets/certs/hsc.jpg" }
+        ]
+      },
+      ssc: {
+        title: "SSC — Certificate", items: [
+          { label: "SSC Marksheet", file: "assets/certs/ssc.jpg" }
+        ]
+      }
+    };
+    // open education certificates modal for a given key
+    function openEduCerts(key) {
+      const set = eduCerts[key]; if (!set) return;
+      document.getElementById('edu-cert-title').textContent = set.title;
+      document.getElementById('edu-cert-grid').innerHTML = set.items.map(c => `
+    <div class="cert-slot">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <span class="ph-label">${c.label}</span>
+      <span class="ph-sub">${c.file}</span>
+    </div>`).join('');
+      document.getElementById('edu-cert-modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    // close education certificates modal
+    function closeEduCerts() {
+      document.getElementById('edu-cert-modal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // default visible counts per section
+    const DEFAULTS = { 'proj-cards': 4, 'research-grid': 6 };
+    // reveal next 2; when all shown -> collapse back to defaults on next click
+    function revealMore(gridId, btnId, sel) {
+      const items = [...document.querySelectorAll('#' + gridId + ' ' + sel)];
+      const hidden = items.filter(el => el.classList.contains('is-hidden'));
+      if (hidden.length === 0) {
+        items.forEach((el, i) => el.classList.toggle('is-hidden', i >= DEFAULTS[gridId]));
+      } else {
+        for (let i = 0; i < 2 && i < hidden.length; i++) { hidden[i].classList.remove('is-hidden'); }
+      }
+      updateMoreBtn(gridId, btnId, sel);
+    }
+    // sync button label with remaining hidden count
+    function updateMoreBtn(gridId, btnId, sel) {
+      const remaining = document.querySelectorAll('#' + gridId + ' ' + sel + '.is-hidden').length;
+      const count = document.getElementById(btnId + '-count');
+      const label = document.querySelector('#' + btnId + ' span:first-child');
+      if (remaining === 0) { label.textContent = 'Show less'; if (count) count.textContent = ''; }
+      else { label.textContent = 'Show more'; if (count) count.textContent = '+' + remaining; }
+    }
+
+    // init counts on load
+    updateMoreBtn('proj-cards', 'proj-more', '.proj-card');
+    updateMoreBtn('research-grid', 'research-more', '.research-item');
+
+    // close modals on backdrop click
+    document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
+    document.getElementById('cert-modal').addEventListener('click', e => { if (e.target.id === 'cert-modal') closeCerts(); });
+    document.getElementById('edu-cert-modal').addEventListener('click', e => { if (e.target.id === 'edu-cert-modal') closeEduCerts(); });
+    // close modals on escape
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCerts(); closeEduCerts(); } });
+    // close mobile menu after navigation
+    document.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', () => document.querySelector('.nav-links').classList.remove('open')));
+  </script>
+
+</body>
+
+</html>
