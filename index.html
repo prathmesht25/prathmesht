@@ -1528,26 +1528,84 @@
       gap: 12px;
     }
 
+    /* single certificate — show one larger, centered card */
+    .cert-grid.single {
+      grid-template-columns: 1fr;
+    }
+
+    .cert-grid.single .cert-slot {
+      aspect-ratio: 5 / 7;
+      max-width: 380px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
     .cert-slot {
-      border: 1px dashed var(--border-strong);
+      position: relative;
+      border: 1px solid var(--border);
       border-radius: var(--r-md);
       aspect-ratio: 4 / 3;
-      display: flex;
+      overflow: hidden;
+      color: var(--text-3);
+      background: var(--bg-1);
+      cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .cert-slot:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      background: var(--bg-2);
+      box-shadow: var(--shadow-card);
+    }
+
+    .cert-slot:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .cert-slot .cert-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      background: var(--bg-1);
+    }
+
+    .cert-slot .cert-caption {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 22px 12px 9px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0.45) 55%, transparent);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.03em;
+      z-index: 1;
+      text-align: left;
+    }
+
+    /* fallback (image missing / failed to load) */
+    .cert-slot .cert-fallback {
+      position: absolute;
+      inset: 0;
+      display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      color: var(--text-3);
-      background: var(--bg-1);
       text-align: center;
       padding: 12px;
     }
 
-    .cert-slot img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      border-radius: var(--r-sm);
+    .cert-slot .cert-fallback svg {
+      width: 22px;
+      height: 22px;
+      color: var(--text-3);
     }
 
     .cert-slot .ph-label {
@@ -1560,12 +1618,148 @@
       font-family: var(--font-mono);
       font-size: 10px;
       color: var(--text-3);
+      word-break: break-all;
+      max-width: 90%;
     }
 
-    .cert-slot svg {
-      width: 22px;
-      height: 22px;
-      color: var(--text-3);
+    .cert-slot.cert-empty {
+      border-style: dashed;
+      border-color: var(--border-strong);
+    }
+
+    .cert-slot.cert-empty .cert-img {
+      display: none;
+    }
+
+    .cert-slot.cert-empty .cert-caption {
+      display: none;
+    }
+
+    .cert-slot.cert-empty .cert-fallback {
+      display: flex;
+    }
+
+    /* lightbox — full-screen image viewer */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      animation: fadeIn 0.18s ease;
+    }
+
+    .lightbox.open {
+      display: flex;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      z-index: 2;
+    }
+
+    .lightbox-close:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .lightbox-close svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .lightbox-caption {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.75);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 6px 14px;
+      border-radius: var(--r-sm);
+      backdrop-filter: blur(6px);
+      letter-spacing: 0.04em;
+    }
+
+    .lightbox-stage {
+      max-width: 95vw;
+      max-height: 86vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lightbox-stage img {
+      max-width: 95vw;
+      max-height: 86vh;
+      object-fit: contain;
+      border-radius: var(--r-sm);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: #111;
+    }
+
+    .lightbox-fallback {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 60px 40px;
+      border: 1px dashed rgba(255, 255, 255, 0.25);
+      border-radius: var(--r-md);
+      background: rgba(255, 255, 255, 0.04);
+      min-width: 320px;
+      min-height: 420px;
+      color: rgba(255, 255, 255, 0.75);
+      text-align: center;
+    }
+
+    .lightbox-fallback svg {
+      width: 38px;
+      height: 38px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 4px;
+    }
+
+    .lightbox-fallback .fb-label {
+      font-family: var(--font-display);
+      font-size: 16px;
+      color: #fff;
+      font-weight: 500;
+    }
+
+    .lightbox-fallback .fb-path {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.55);
+      word-break: break-all;
+      max-width: 280px;
+    }
+
+    .lightbox.no-img .lightbox-stage img {
+      display: none;
+    }
+
+    .lightbox.no-img .lightbox-fallback {
+      display: flex;
     }
 
     /* responsive */
@@ -1960,7 +2154,7 @@
       <div class="exp-row">
         <div class="exp-date">
           <div class="exp-status past"><span class="dot"></span>past</div>
-          Feb 2024 — 2024
+          Feb 2024 — May 2024
         </div>
         <div>
           <h3 class="exp-role">Web Developer Intern</h3>
@@ -1976,13 +2170,14 @@
             <span class="stack-tag">JavaScript</span>
             <span class="stack-tag">Bootstrap</span>
           </div>
-          <div style="margin-top:14px;">
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
             <a href="https://anishreetechnologies.com/" target="_blank" rel="noopener" class="btn">
               Visit Anishree
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M7 17L17 7M7 7h10v10" />
               </svg>
             </a>
+            <button class="btn" onclick="openEduCerts('internship')">View certificate</button>
           </div>
         </div>
         <div class="exp-side">INTERNSHIP</div>
@@ -2561,7 +2756,7 @@
               <path d="M7 17L17 7M7 7h10v10" />
             </svg>
           </a>
-          <button class="btn" onclick="openEduCerts('hsc')">View certificate</button>
+          <button class="btn" onclick="openEduCerts('hsc')">View certificates</button>
         </div>
       </article>
 
@@ -2576,7 +2771,7 @@
               <path d="M7 17L17 7M7 7h10v10" />
             </svg>
           </a>
-          <button class="btn" onclick="openEduCerts('ssc')">View certificate</button>
+          <button class="btn" onclick="openEduCerts('ssc')">View certificates</button>
         </div>
       </article>
     </div>
@@ -2725,11 +2920,31 @@
         </button>
       </div>
       <div class="modal-body">
-        <p style="margin-bottom:18px;color:var(--text-2);font-size:13.5px;">Drop your marksheets / certificates into
-          <strong>assets/certs/</strong> and update the <code>src</code> paths below.</p>
         <div class="cert-grid" id="edu-cert-grid"></div>
       </div>
     </div>
+  </div>
+
+  <!-- lightbox: full-screen certificate / image viewer -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close viewer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 6L6 18M6 6l12 12" />
+      </svg>
+    </button>
+    <div class="lightbox-stage">
+      <img id="lightbox-img" alt="" />
+      <div class="lightbox-fallback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <circle cx="9" cy="9" r="2" />
+          <path d="M21 15l-5-5L5 21" />
+        </svg>
+        <span class="fb-label" id="lightbox-label">Certificate</span>
+        <span class="fb-path" id="lightbox-path">image not found</span>
+      </div>
+    </div>
+    <div class="lightbox-caption" id="lightbox-caption"></div>
   </div>
 
   <script>
@@ -3057,8 +3272,13 @@
       document.getElementById('cert-modal').classList.remove('open');
       document.body.style.overflow = '';
     }
-    // education certificate sets per qualification
+    // education / internship certificate sets per qualification
     const eduCerts = {
+      internship: {
+        title: "Internship — Anishree Technologies", items: [
+          { label: "Internship Completion Certificate", file: "assets/certs/internship-anishree.jpg" }
+        ]
+      },
       mca: {
         title: "MCA — Certificates", items: [
           { label: "Semester 1 Marksheet", file: "assets/certs/mca-sem1.jpg" },
@@ -3080,13 +3300,15 @@
         ]
       },
       hsc: {
-        title: "HSC — Certificate", items: [
-          { label: "HSC Marksheet", file: "assets/certs/hsc.jpg" }
+        title: "HSC — Certificates", items: [
+          { label: "HSC Marksheet", file: "assets/certs/hsc-marksheet.jpg" },
+          { label: "HSC Board Certificate", file: "assets/certs/hsc-board.jpg" }
         ]
       },
       ssc: {
-        title: "SSC — Certificate", items: [
-          { label: "SSC Marksheet", file: "assets/certs/ssc.jpg" }
+        title: "SSC — Certificates", items: [
+          { label: "SSC Marksheet", file: "assets/certs/ssc-marksheet.jpg" },
+          { label: "SSC Board Certificate", file: "assets/certs/ssc-board.jpg" }
         ]
       }
     };
@@ -3094,12 +3316,22 @@
     function openEduCerts(key) {
       const set = eduCerts[key]; if (!set) return;
       document.getElementById('edu-cert-title').textContent = set.title;
-      document.getElementById('edu-cert-grid').innerHTML = set.items.map(c => `
-    <div class="cert-slot">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-      <span class="ph-label">${c.label}</span>
-      <span class="ph-sub">${c.file}</span>
-    </div>`).join('');
+      const grid = document.getElementById('edu-cert-grid');
+      grid.classList.toggle('single', set.items.length === 1);
+      grid.innerHTML = set.items.map(c => {
+        const safeLabel = c.label.replace(/'/g, "\\'");
+        const safeFile = c.file.replace(/'/g, "\\'");
+        return `
+    <div class="cert-slot" onclick="openLightbox('${safeFile}','${safeLabel}')" role="button" tabindex="0">
+      <img class="cert-img" src="${c.file}" alt="${c.label}" onerror="this.parentElement.classList.add('cert-empty')" />
+      <div class="cert-fallback">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        <span class="ph-label">${c.label}</span>
+        <span class="ph-sub">${c.file}</span>
+      </div>
+      <div class="cert-caption">${c.label}</div>
+    </div>`;
+      }).join('');
       document.getElementById('edu-cert-modal').classList.add('open');
       document.body.style.overflow = 'hidden';
     }
@@ -3107,6 +3339,31 @@
     function closeEduCerts() {
       document.getElementById('edu-cert-modal').classList.remove('open');
       document.body.style.overflow = '';
+    }
+    // open lightbox / gallery viewer for a single certificate image
+    function openLightbox(file, label) {
+      const lb = document.getElementById('lightbox');
+      const img = document.getElementById('lightbox-img');
+      document.getElementById('lightbox-label').textContent = label || '';
+      document.getElementById('lightbox-path').textContent = file || 'image not found';
+      document.getElementById('lightbox-caption').textContent = label || '';
+      lb.classList.remove('no-img');
+      img.onerror = () => lb.classList.add('no-img');
+      img.onload = () => lb.classList.remove('no-img');
+      img.alt = label || '';
+      img.src = file;
+      lb.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    // close lightbox
+    function closeLightbox() {
+      const lb = document.getElementById('lightbox');
+      lb.classList.remove('open');
+      const img = document.getElementById('lightbox-img');
+      img.removeAttribute('src');
+      // restore body scroll only if no other modal is open
+      const anyOpen = document.querySelector('.modal-overlay.open');
+      if (!anyOpen) document.body.style.overflow = '';
     }
 
     // default visible counts per section (desktop / mobile) — 2 rows worth
@@ -3175,8 +3432,16 @@
     document.getElementById('modal').addEventListener('click', e => { if (e.target.id === 'modal') closeModal(); });
     document.getElementById('cert-modal').addEventListener('click', e => { if (e.target.id === 'cert-modal') closeCerts(); });
     document.getElementById('edu-cert-modal').addEventListener('click', e => { if (e.target.id === 'edu-cert-modal') closeEduCerts(); });
-    // close modals on escape
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCerts(); closeEduCerts(); } });
+    // lightbox: close on backdrop (any click that's not the image itself)
+    document.getElementById('lightbox').addEventListener('click', e => {
+      if (e.target.tagName !== 'IMG' && !e.target.closest('.lightbox-close')) closeLightbox();
+    });
+    // close modals on escape (lightbox first if open)
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      if (document.getElementById('lightbox').classList.contains('open')) { closeLightbox(); return; }
+      closeModal(); closeCerts(); closeEduCerts();
+    });
     // close mobile menu after navigation
     document.querySelectorAll('.nav-links a').forEach(a => a.addEventListener('click', () => document.querySelector('.nav-links').classList.remove('open')));
   </script>
