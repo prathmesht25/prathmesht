@@ -41,6 +41,37 @@
       --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
       --maxw: 1200px;
       --glow: 0 0 24px rgba(245, 165, 36, 0.18);
+      --nav-bg: rgba(7, 9, 15, 0.85);
+      --blur-bg: rgba(7, 9, 15, 0.7);
+      --overlay-bg: rgba(3, 5, 11, 0.78);
+      --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.3);
+      --ambient-glow: rgba(245, 165, 36, 0.10);
+    }
+
+    /* warm aesthetic light theme */
+    [data-theme="light"] {
+      --bg-0: #F4EEE2;
+      --bg-1: #ECE4D0;
+      --bg-2: #E6DCC4;
+      --panel: #FAF6EC;
+      --border: #DCD0B5;
+      --border-strong: #B5A88E;
+      --text-0: #2A2418;
+      --text-1: #54493A;
+      --text-2: #847866;
+      --text-3: #A8997F;
+      --accent: #C97A1A;
+      --accent-2: #B86F0F;
+      --accent-soft: #F2E5CC;
+      --status: #2A9050;
+      --warn: #C44848;
+      --link: #3F5FB8;
+      --glow: 0 0 24px rgba(201, 122, 26, 0.22);
+      --nav-bg: rgba(244, 238, 226, 0.82);
+      --blur-bg: rgba(244, 238, 226, 0.85);
+      --overlay-bg: rgba(60, 45, 30, 0.42);
+      --shadow-card: 0 8px 30px rgba(100, 75, 45, 0.12);
+      --ambient-glow: rgba(201, 122, 26, 0.10);
     }
 
     * {
@@ -61,6 +92,7 @@
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
       overflow-x: hidden;
+      transition: background-color 0.25s ease, color 0.25s ease;
     }
 
     a {
@@ -101,7 +133,7 @@
       right: -180px;
       width: 520px;
       height: 520px;
-      background: radial-gradient(circle, rgba(245, 165, 36, 0.10), transparent 70%);
+      background: radial-gradient(circle, var(--ambient-glow), transparent 70%);
       pointer-events: none;
       z-index: 0;
     }
@@ -171,7 +203,7 @@
       position: sticky;
       top: 0;
       z-index: 15;
-      background: rgba(7, 9, 15, 0.85);
+      background: var(--nav-bg);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
@@ -233,6 +265,49 @@
       cursor: pointer;
       font-family: var(--font-mono);
       font-size: 12px;
+    }
+
+    /* theme toggle button */
+    .theme-toggle {
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-sm);
+      color: var(--text-1);
+      width: 34px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      padding: 0;
+    }
+
+    .theme-toggle:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: var(--glow);
+    }
+
+    .theme-toggle svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .theme-toggle .icon-moon {
+      display: none;
+    }
+
+    .theme-toggle .icon-sun {
+      display: block;
+    }
+
+    [data-theme="light"] .theme-toggle .icon-moon {
+      display: block;
+    }
+
+    [data-theme="light"] .theme-toggle .icon-sun {
+      display: none;
     }
 
     /* shared section */
@@ -437,7 +512,7 @@
       font-family: var(--font-mono);
       font-size: 10.5px;
       color: var(--text-0);
-      background: rgba(7, 9, 15, 0.7);
+      background: var(--blur-bg);
       backdrop-filter: blur(8px);
       padding: 4px 8px;
       border-radius: var(--r-sm);
@@ -778,7 +853,7 @@
     .proj-card:hover {
       border-color: var(--border-strong);
       transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+      box-shadow: var(--shadow-card);
     }
 
     /* hidden cards revealed via show more */
@@ -1015,6 +1090,8 @@
       border-radius: var(--r-md);
       background: var(--panel);
       transition: border-color 0.15s ease, transform 0.15s ease;
+      display: flex;
+      flex-direction: column;
     }
 
     .research-item:hover {
@@ -1041,6 +1118,21 @@
       font-family: var(--font-mono);
       font-size: 11.5px;
       color: var(--text-2);
+    }
+
+    .research-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .research-actions .btn {
+      flex: 1;
+      justify-content: center;
+      padding: 7px 10px;
+      font-size: 11px;
     }
 
     /* education */
@@ -1291,7 +1383,7 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(3, 5, 11, 0.78);
+      background: var(--overlay-bg);
       backdrop-filter: blur(6px);
       z-index: 100;
       display: none;
@@ -1609,6 +1701,15 @@
 </head>
 
 <body>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('theme');
+        if (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) t = 'light';
+        if (t) document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { }
+    })();
+  </script>
 
   <!-- status bar, desktop only -->
   <div class="status-bar" role="status" aria-label="System status">
@@ -1642,6 +1743,15 @@
         <li><a href="#education">education</a></li>
         <li><a href="#contact">contact</a></li>
       </ul>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle color theme" title="Toggle theme">
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
     </div>
   </nav>
 
@@ -1820,7 +1930,7 @@
       <div class="exp-row">
         <div class="exp-date">
           <div class="exp-status active"><span class="dot"></span>active</div>
-          2025 — present
+          Aug 2024 — present
         </div>
         <div>
           <h3 class="exp-role">Trainee Research Engineer</h3>
@@ -2339,48 +2449,48 @@
     <div class="research-grid" id="research-grid">
       <div class="research-item">
         <div class="num">R-01</div>
-        <div class="topic">Reverse Engineering</div>
-        <div class="note">PE binaries · disassembly · static analysis</div>
+        <div class="topic">Comodo Open EDR</div>
+        <div class="note">Open-source EDR · agent · sensors · MITRE mapping</div>
+        <div class="research-actions">
+          <button class="btn" onclick="openResearch('r1')">Summary</button>
+          <a class="btn" href="https://github.com/ComodoSecurity/openedr" target="_blank" rel="noopener">Reference</a>
+        </div>
       </div>
       <div class="research-item">
         <div class="num">R-02</div>
-        <div class="topic">Malware Analysis</div>
-        <div class="note">Behavior triage · IOCs · sandboxing</div>
+        <div class="topic">Elastic Detection Rules</div>
+        <div class="note">EQL · KQL · behavioral rules · ATT&amp;CK</div>
+        <div class="research-actions">
+          <button class="btn" onclick="openResearch('r2')">Summary</button>
+          <a class="btn" href="https://github.com/elastic/detection-rules" target="_blank" rel="noopener">Reference</a>
+        </div>
       </div>
       <div class="research-item">
         <div class="num">R-03</div>
-        <div class="topic">Kernel-mode Drivers</div>
-        <div class="note">WDM / WDF · minifilters · IRPs</div>
+        <div class="topic">OCSF</div>
+        <div class="note">Open Cybersecurity Schema Framework · event normalization</div>
+        <div class="research-actions">
+          <button class="btn" onclick="openResearch('r3')">Summary</button>
+          <a class="btn" href="https://schema.ocsf.io/" target="_blank" rel="noopener">Reference</a>
+        </div>
       </div>
       <div class="research-item">
         <div class="num">R-04</div>
-        <div class="topic">PE Format Internals</div>
-        <div class="note">Headers · sections · imports · loader</div>
+        <div class="topic">DLP</div>
+        <div class="note">Data loss prevention · content inspection · exfiltration channels</div>
+        <div class="research-actions">
+          <button class="btn" onclick="openResearch('r4')">Summary</button>
+          <a class="btn" href="https://learn.microsoft.com/en-us/purview/dlp-learn-about-dlp" target="_blank" rel="noopener">Reference</a>
+        </div>
       </div>
       <div class="research-item">
         <div class="num">R-05</div>
-        <div class="topic">Anti-Debugging Techniques</div>
-        <div class="note">Detection patterns · bypass strategies</div>
-      </div>
-      <div class="research-item">
-        <div class="num">R-06</div>
-        <div class="topic">Memory Forensics</div>
-        <div class="note">Process memory · injection traces · volatility</div>
-      </div>
-      <div class="research-item is-hidden">
-        <div class="num">R-07</div>
-        <div class="topic">Detection Engineering</div>
-        <div class="note">Rule design · telemetry shape · MITRE mapping</div>
-      </div>
-      <div class="research-item is-hidden">
-        <div class="num">R-08</div>
-        <div class="topic">Windows Internals (Russinovich)</div>
-        <div class="note">Object manager · processes · scheduling</div>
-      </div>
-      <div class="research-item is-hidden">
-        <div class="num">R-09</div>
-        <div class="topic">Network Protocol Analysis</div>
-        <div class="note">TCP/IP layers · packet inspection · filtering</div>
+        <div class="topic">TinyWall</div>
+        <div class="note">Lightweight Windows firewall · WFP · application-aware filtering</div>
+        <div class="research-actions">
+          <button class="btn" onclick="openResearch('r5')">Summary</button>
+          <a class="btn" href="https://github.com/pylorak/tinywall" target="_blank" rel="noopener">Reference</a>
+        </div>
       </div>
     </div>
     <div class="show-more-wrap">
@@ -2442,7 +2552,7 @@
 
       <article class="edu-card compact">
         <div class="edu-card-head"><span>EDU-03 · Higher Secondary</span><span>2019</span></div>
-        <h4>HSC — Amravati</h4>
+        <h4>HSC — Maharashtra State Board</h4>
         <div class="program">12th · Higher Secondary Certificate</div>
         <div class="meta"><span>📍 Amravati, Maharashtra</span></div>
         <div class="edu-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -2457,7 +2567,7 @@
 
       <article class="edu-card compact">
         <div class="edu-card-head"><span>EDU-04 · Secondary</span><span>2017</span></div>
-        <h4>SSC — Amravati</h4>
+        <h4>SSC — Maharashtra State Board</h4>
         <div class="program">10th · Secondary School Certificate</div>
         <div class="meta"><span>📍 Amravati, Maharashtra</span></div>
         <div class="edu-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -2838,6 +2948,100 @@
       document.getElementById('modal').classList.add('open');
       document.body.style.overflow = 'hidden';
     }
+    // toggle dark / light theme and persist
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('theme', next); } catch (e) { }
+    }
+    // research interest summaries
+    const researchInfo = {
+      r1: {
+        id: "R-01 · COMODO OPEN EDR",
+        title: "Comodo Open EDR",
+        summary: `
+          <p><strong>What it is.</strong> Comodo Open EDR is an open-source endpoint detection and response platform that provides real-time visibility into endpoint activity through kernel-level sensors, process monitoring, and behavioral telemetry.</p>
+          <p><strong>What I'm studying.</strong> Agent architecture, kernel sensor design, telemetry collection pipelines, event correlation logic, and how its detection rules map to MITRE ATT&amp;CK techniques. It's a practical reference for understanding how production EDR products are structured from the inside.</p>
+          <div class="modal-tags">
+            <span class="stack-tag">EDR</span>
+            <span class="stack-tag">Open Source</span>
+            <span class="stack-tag">Endpoint Security</span>
+            <span class="stack-tag">MITRE ATT&amp;CK</span>
+            <span class="stack-tag">Telemetry</span>
+          </div>
+        `
+      },
+      r2: {
+        id: "R-02 · ELASTIC DETECTION RULES",
+        title: "Elastic Detection Rules",
+        summary: `
+          <p><strong>What it is.</strong> The <strong>elastic/detection-rules</strong> repository is the curated set of behavioral detection rules powering Elastic Security — covering Windows, Linux, macOS, cloud, and network telemetry, written in EQL, KQL, and Lucene.</p>
+          <p><strong>What I'm studying.</strong> How mature detection engineering looks in practice — telemetry shape, signal quality, false positive handling, ATT&amp;CK mapping, rule testing, and the structure that lets detection content stay maintainable as it scales.</p>
+          <div class="modal-tags">
+            <span class="stack-tag">Detection Engineering</span>
+            <span class="stack-tag">EQL</span>
+            <span class="stack-tag">KQL</span>
+            <span class="stack-tag">Elastic</span>
+            <span class="stack-tag">ATT&amp;CK</span>
+          </div>
+        `
+      },
+      r3: {
+        id: "R-03 · OCSF",
+        title: "OCSF — Open Cybersecurity Schema Framework",
+        summary: `
+          <p><strong>What it is.</strong> OCSF is a vendor-agnostic schema for normalizing security event data across products and platforms. It defines categories, classes, and attributes so telemetry from EDRs, firewalls, identity providers, and cloud platforms can be ingested and analyzed in a common shape.</p>
+          <p><strong>What I'm studying.</strong> The schema model, event class structure, and attribute taxonomy — useful for designing EDR event formats that align with industry-standard data shapes and play well with SIEM / data lake pipelines.</p>
+          <div class="modal-tags">
+            <span class="stack-tag">Schema</span>
+            <span class="stack-tag">Normalization</span>
+            <span class="stack-tag">Telemetry</span>
+            <span class="stack-tag">Standards</span>
+            <span class="stack-tag">SIEM</span>
+          </div>
+        `
+      },
+      r4: {
+        id: "R-04 · DLP",
+        title: "DLP — Data Loss Prevention",
+        summary: `
+          <p><strong>What it is.</strong> Data Loss Prevention focuses on detecting and preventing unauthorized disclosure of sensitive data — credentials, intellectual property, PII, financial records — across endpoints, network egress, and cloud surfaces.</p>
+          <p><strong>What I'm studying.</strong> Content inspection techniques, endpoint DLP agent design, policy engines, exfiltration channels (uploads, USB, clipboard, print, screenshots), and how DLP integrates with EDR for unified endpoint data protection.</p>
+          <div class="modal-tags">
+            <span class="stack-tag">DLP</span>
+            <span class="stack-tag">Content Inspection</span>
+            <span class="stack-tag">Endpoint Protection</span>
+            <span class="stack-tag">Data Security</span>
+            <span class="stack-tag">Policy Engine</span>
+          </div>
+        `
+      },
+      r5: {
+        id: "R-05 · TINYWALL",
+        title: "TinyWall",
+        summary: `
+          <p><strong>What it is.</strong> TinyWall is a lightweight, free Windows firewall manager built on top of the built-in Windows Filtering Platform (WFP). It provides per-application network control without installing its own kernel driver — driving the system firewall through documented APIs.</p>
+          <p><strong>What I'm studying.</strong> WFP integration, application-aware filtering, allow-list driven policy design, and how to build a friendly user interface on top of Windows' native firewall stack — directly relevant for the network-control work in <strong>pconsolsvc</strong>.</p>
+          <div class="modal-tags">
+            <span class="stack-tag">Firewall</span>
+            <span class="stack-tag">WFP</span>
+            <span class="stack-tag">Windows</span>
+            <span class="stack-tag">Network Security</span>
+            <span class="stack-tag">Allow-listing</span>
+          </div>
+        `
+      }
+    };
+    // open research detail modal (reuses project modal)
+    function openResearch(key) {
+      const r = researchInfo[key]; if (!r) return;
+      document.getElementById('modal-id').textContent = r.id;
+      document.getElementById('modal-title').textContent = r.title;
+      document.getElementById('modal-body').innerHTML = r.summary;
+      document.getElementById('modal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
     // close project modal
     function closeModal() {
       document.getElementById('modal').classList.remove('open');
@@ -2905,8 +3109,14 @@
       document.body.style.overflow = '';
     }
 
-    // default visible counts per section
-    const DEFAULTS = { 'proj-cards': 4, 'research-grid': 6 };
+    // default visible counts per section (desktop / mobile) — 2 rows worth
+    const DEFAULT_DESKTOP = { 'proj-cards': 4, 'research-grid': 6 };
+    const DEFAULT_MOBILE = { 'proj-cards': 2, 'research-grid': 2 };
+    // pick default based on screen size
+    function getDefault(gridId) {
+      const isMobile = window.matchMedia('(max-width: 640px)').matches;
+      return (isMobile ? DEFAULT_MOBILE : DEFAULT_DESKTOP)[gridId];
+    }
     // determine how many items to reveal per click (responsive)
     function getStep(gridId) {
       const isMobile = window.matchMedia('(max-width: 640px)').matches;
@@ -2925,7 +3135,8 @@
     // collapse back to default visible count
     function showLess(gridId, btnId, sel) {
       const items = [...document.querySelectorAll('#' + gridId + ' ' + sel)];
-      items.forEach((el, i) => el.classList.toggle('is-hidden', i >= DEFAULTS[gridId]));
+      const def = getDefault(gridId);
+      items.forEach((el, i) => el.classList.toggle('is-hidden', i >= def));
       updateMoreBtn(gridId, btnId, sel);
       const section = document.getElementById(gridId).closest('section');
       if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2943,12 +3154,20 @@
         else { moreBtn.classList.remove('is-collapsed'); if (count) count.textContent = '+' + remaining; }
       }
       if (lessBtn) {
-        if (visible > DEFAULTS[gridId]) { lessBtn.classList.remove('is-collapsed'); }
+        if (visible > getDefault(gridId)) { lessBtn.classList.remove('is-collapsed'); }
         else { lessBtn.classList.add('is-collapsed'); }
       }
     }
+    // apply default visibility based on current screen size
+    function initVisibility(gridId, sel) {
+      const items = [...document.querySelectorAll('#' + gridId + ' ' + sel)];
+      const def = getDefault(gridId);
+      items.forEach((el, i) => el.classList.toggle('is-hidden', i >= def));
+    }
 
-    // init counts on load
+    // init defaults + button counts on load
+    initVisibility('proj-cards', '.proj-card');
+    initVisibility('research-grid', '.research-item');
     updateMoreBtn('proj-cards', 'proj-more', '.proj-card');
     updateMoreBtn('research-grid', 'research-more', '.research-item');
 
