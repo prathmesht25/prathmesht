@@ -877,14 +877,17 @@
       font-size: 12px;
     }
 
-    /* show more control */
+    /* show more / less control */
     .show-more-wrap {
       display: flex;
       justify-content: center;
+      gap: 10px;
       margin-top: 24px;
+      flex-wrap: wrap;
     }
 
-    .show-more {
+    .show-more,
+    .show-less {
       display: inline-flex;
       align-items: center;
       gap: 10px;
@@ -905,16 +908,30 @@
       box-shadow: var(--glow);
     }
 
+    .show-less:hover {
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+
+    .show-less svg {
+      transform: rotate(180deg);
+    }
+
     .show-more .count {
       font-family: var(--font-mono);
       font-size: 12px;
       color: var(--text-3);
     }
 
-    .show-more svg {
+    .show-more svg,
+    .show-less svg {
       width: 14px;
       height: 14px;
       transition: transform 0.2s ease;
+    }
+
+    .is-collapsed {
+      display: none !important;
     }
 
     /* restricted */
@@ -1819,6 +1836,14 @@
             <span class="stack-tag">Windows</span>
             <span class="stack-tag">Security Research</span>
           </div>
+          <div style="margin-top:14px;">
+            <a href="https://www.npav.net/" target="_blank" rel="noopener" class="btn">
+              Visit NPAV
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M7 17L17 7M7 7h10v10" />
+              </svg>
+            </a>
+          </div>
         </div>
         <div class="exp-side">CURRENT</div>
       </div>
@@ -1840,6 +1865,14 @@
             <span class="stack-tag">CSS</span>
             <span class="stack-tag">JavaScript</span>
             <span class="stack-tag">Bootstrap</span>
+          </div>
+          <div style="margin-top:14px;">
+            <a href="https://anishreetechnologies.com/" target="_blank" rel="noopener" class="btn">
+              Visit Anishree
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M7 17L17 7M7 7h10v10" />
+              </svg>
+            </a>
           </div>
         </div>
         <div class="exp-side">INTERNSHIP</div>
@@ -2285,6 +2318,12 @@
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
+      <button class="show-less is-collapsed" id="proj-less" onclick="showLess('proj-cards','proj-more','.proj-card')">
+        <span>Show less</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
     </div>
   </section>
 
@@ -2349,6 +2388,13 @@
         onclick="revealMore('research-grid','research-more','.research-item')">
         <span>Show more</span>
         <span class="count" id="research-more-count"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      <button class="show-less is-collapsed" id="research-less"
+        onclick="showLess('research-grid','research-more','.research-item')">
+        <span>Show less</span>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M6 9l6 6 6-6" />
         </svg>
@@ -2861,24 +2907,45 @@
 
     // default visible counts per section
     const DEFAULTS = { 'proj-cards': 4, 'research-grid': 6 };
-    // reveal next 2; when all shown -> collapse back to defaults on next click
+    // determine how many items to reveal per click (responsive)
+    function getStep(gridId) {
+      const isMobile = window.matchMedia('(max-width: 640px)').matches;
+      if (isMobile) return 1;
+      if (gridId === 'research-grid') return 3;
+      return 2;
+    }
+    // reveal next batch of hidden items
     function revealMore(gridId, btnId, sel) {
       const items = [...document.querySelectorAll('#' + gridId + ' ' + sel)];
       const hidden = items.filter(el => el.classList.contains('is-hidden'));
-      if (hidden.length === 0) {
-        items.forEach((el, i) => el.classList.toggle('is-hidden', i >= DEFAULTS[gridId]));
-      } else {
-        for (let i = 0; i < 2 && i < hidden.length; i++) { hidden[i].classList.remove('is-hidden'); }
-      }
+      const step = getStep(gridId);
+      for (let i = 0; i < step && i < hidden.length; i++) { hidden[i].classList.remove('is-hidden'); }
       updateMoreBtn(gridId, btnId, sel);
     }
-    // sync button label with remaining hidden count
+    // collapse back to default visible count
+    function showLess(gridId, btnId, sel) {
+      const items = [...document.querySelectorAll('#' + gridId + ' ' + sel)];
+      items.forEach((el, i) => el.classList.toggle('is-hidden', i >= DEFAULTS[gridId]));
+      updateMoreBtn(gridId, btnId, sel);
+      const section = document.getElementById(gridId).closest('section');
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    // sync button visibility / labels with current state
     function updateMoreBtn(gridId, btnId, sel) {
-      const remaining = document.querySelectorAll('#' + gridId + ' ' + sel + '.is-hidden').length;
+      const items = [...document.querySelectorAll('#' + gridId + ' ' + sel)];
+      const remaining = items.filter(el => el.classList.contains('is-hidden')).length;
+      const visible = items.length - remaining;
+      const moreBtn = document.getElementById(btnId);
+      const lessBtn = document.getElementById(btnId.replace('-more', '-less'));
       const count = document.getElementById(btnId + '-count');
-      const label = document.querySelector('#' + btnId + ' span:first-child');
-      if (remaining === 0) { label.textContent = 'Show less'; if (count) count.textContent = ''; }
-      else { label.textContent = 'Show more'; if (count) count.textContent = '+' + remaining; }
+      if (moreBtn) {
+        if (remaining === 0) { moreBtn.classList.add('is-collapsed'); }
+        else { moreBtn.classList.remove('is-collapsed'); if (count) count.textContent = '+' + remaining; }
+      }
+      if (lessBtn) {
+        if (visible > DEFAULTS[gridId]) { lessBtn.classList.remove('is-collapsed'); }
+        else { lessBtn.classList.add('is-collapsed'); }
+      }
     }
 
     // init counts on load
